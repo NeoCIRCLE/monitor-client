@@ -1,0 +1,21 @@
+[Client]
+Freuency = 5
+Debug = True
+
+[Server]
+Address = 127.0.0.1
+Port = 5672
+
+[AMQP]
+Queue = graphite
+User = guest
+Pass = guest
+
+[Metrics]
+cpuUsage = True
+memoryUsage = True
+userCount = True
+swapUsage = True
+systemBootTime = False
+packageTraffic = False
+dataTraffic = False
