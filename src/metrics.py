@@ -34,7 +34,7 @@ class std (Collection):
 
             @staticmethod
             def harvest():
-                return Metrics("memory.usage", ps.virtual_memory().percent)
+                return Metrics("memory.usage", ps.virtmem_usage().percent)
 
 
     class user (Collection.Group):
@@ -51,25 +51,25 @@ class std (Collection):
 
             @staticmethod
             def harvest():
-                return Metrics("network.packages_sent",  ps.net_io_counters().packets_sent)
+                return Metrics("network.packages_sent",  ps.network_io_counters().packets_sent)
 
         class packages_received (Collection.Group.Metric):
 
             @staticmethod
             def harvest():
-                return Metrics("network.packages_received",  ps.net_io_counters().packets_recv)
+                return Metrics("network.packages_received",  ps.network_io_counters().packets_recv)
 
         class bytes_sent (Collection.Group.Metric):
 
             @staticmethod
             def harvest():
-                return Metrics("network.bytes_sent", ps.net_io_counters().bytes_sent)
+                return Metrics("network.bytes_sent", ps.network_io_counters().bytes_sent)
 
         class bytes_received(Collection.Group.Metric):
 
             @staticmethod
             def harvest():
-                return Metrics("network.bytes_recv",  ps.net_io_counters().bytes_recv)
+                return Metrics("network.bytes_recv",  ps.network_io_counters().bytes_recv)
 
     class system (Collection.Group):
 

@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import platform, collections, time, socket, pika, struct
+import logging
+logging.basicConfig()
 
 class Client:
 
@@ -10,14 +12,16 @@ class Client:
         modul. It is a dictionary: {server_address, server_port, frequency,
         debugMode, amqp_user, amqp_pass, amqp_queue}.
         """
-        self.name = "circle." + socket.gethostname().split.('.').reverse()
+	hostname = socket.gethostname().split('.')
+	hostname.reverse()
+        self.name = "circle." + ".".join(hostname)
         self.server_address = str(config["server_address"])
         self.server_port = int(config["server_port"])
         self.delay = int(config["frequency"])
-        self.debug = config["debugMode"]
-        self.amqp_user = config["amqp_user"]
-        self.amqp_pass = config["amqp_pass"]
-        self.amqp_queue = config["aqmp_queue"]
+        self.debugMode = config["debugMode"]
+        self.amqp_user = str(config["amqp_user"])
+        self.amqp_pass = str(config["amqp_pass"])
+        self.amqp_queue = str(config["amqp_queue"])
 
     def __connect(self):
         """
@@ -26,7 +30,7 @@ class Client:
         """
         try:
             credentials = pika.PlainCredentials(self.amqp_user, self.amqp_pass)
-            self.connection = pika.BlockingConnection(pikaConnectionParameters(
+	    self.connection = pika.BlockingConnection(pika.ConnectionParameters(
                                 host=self.server_address,
                                 port=self.server_port,
                                 credentials=credentials
@@ -35,7 +39,7 @@ class Client:
             self.channel = self.connection.channel()
             return True
         except:
-            return False
+	    raise 
 
     def __disconnect(self):
         """
@@ -48,7 +52,7 @@ class Client:
         """
         Send the message given in the parameters.
         """
-        self.channel.basic_publish(exchange='graphite', routing_key='',
+        self.channel.basic_publish(exchange=self.amqp_queue, routing_key='',
             body="\n".join(message))
 
     def __collectFromNode(self, metricCollectors):
@@ -75,7 +79,6 @@ class Client:
         if self.__connect() == False:
             print ("An error has occured while connecting to the server on %s" %
                     (self.server_address + ":" + str(self.server_port)))
-            return -1
         else:
             print("Connection established to %s on port %s. \
                    Report frequency is %d sec. Clientname: %s" %
@@ -84,7 +87,7 @@ class Client:
         try:
             while True:
                 metrics =  self.__collectFromNode(metricCollectors)
-                if self.debugMode == True:
+                if self.debugMode == "True":
                     print(metrics)
                 self.__send(metrics)
                 time.sleep(self.delay)

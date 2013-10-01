@@ -1,5 +1,5 @@
 import sys
-from src import cnfparse
+from src import cnfparse, client, collectables
 
 def main():
 
@@ -16,7 +16,9 @@ def main():
     if (len(sys.argv)==2 and sys.argv[1]=="run"):
         configuration = cnfparse.importConf("config/client.conf")
 
-
+    cli = client.Client(configuration)
+    cli.startReporting(metricCollectors = 
+			collectables.collectables.provideAll())
 
 if __name__ == "__main__":
     main()

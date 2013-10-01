@@ -1,4 +1,4 @@
-import configparser
+import ConfigParser as configparser
 
 def importConf(path_to_file):
     config = configparser.RawConfigParser(allow_no_value = False)
@@ -9,9 +9,9 @@ def importConf(path_to_file):
         params["debugMode"]       =  config.get("Client" , "Debug")
         params["server_address"]  =  config.get("Server" , "Address")
         params["server_port"]     =  config.get("Server" , "Port")
-        params["aqmp_queue"]      =  config.get("AMQP"   , "Queue")
-        params["aqmp_user"]       =  config.get("AMQP"   , "User")
-        params["aqmp_pass"]       =  config.get("AMQP"   , "Pass")
+        params["amqp_queue"]      =  config.get("AMQP"   , "Queue")
+        params["amqp_user"]       =  config.get("AMQP"   , "User")
+        params["amqp_pass"]       =  config.get("AMQP"   , "Pass")
         params["cpu.usage"]       =  config.get("Metrics", "cpuUsage")
         params["memory.usage"]    =  config.get("Metrics", "memoryUsage")
         params["user.count"]      =  config.get("Metrics", "userCount")
