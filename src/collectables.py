@@ -1,6 +1,6 @@
 from metrics import *
 
- class collectables:
+class collectables:
 
     __collectables = {
         std.cpu.usage.name:                     [std.cpu.usage],
