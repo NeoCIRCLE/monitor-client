@@ -5,6 +5,7 @@ def importConf(path_to_file):
     try:
         config.read(path_to_file)
         params = {}
+        metrics = {}
         params["frequency"]       =  config.get("Client" , "Frequency")
         params["debugMode"]       =  config.get("Client" , "Debug")
         params["server_address"]  =  config.get("Server" , "Address")
@@ -12,13 +13,13 @@ def importConf(path_to_file):
         params["amqp_queue"]      =  config.get("AMQP"   , "Queue")
         params["amqp_user"]       =  config.get("AMQP"   , "User")
         params["amqp_pass"]       =  config.get("AMQP"   , "Pass")
-        params["cpu.usage"]       =  config.get("Metrics", "cpuUsage")
-        params["memory.usage"]    =  config.get("Metrics", "memoryUsage")
-        params["user.count"]      =  config.get("Metrics", "userCount")
-        params["swap.usage"]      =  config.get("Metrics", "swapUsage")
-        params["system.boot_time"]=  config.get("Metrics", "systemBootTime")
-        params["package.traffic"] =  config.get("Metrics", "packageTraffic")
-        params["data.traffic"]    =  config.get("Metrics", "dataTraffic")
+        metrics["cpu.usage"]       =  config.get("Metrics", "cpuUsage")
+        metrics["memory.usage"]    =  config.get("Metrics", "memoryUsage")
+        metrics["user.count"]      =  config.get("Metrics", "userCount")
+        metrics["swap.usage"]      =  config.get("Metrics", "swapUsage")
+        metrics["system.boot_time"]=  config.get("Metrics", "systemBootTime")
+        metrics["package.traffic"] =  config.get("Metrics", "packageTraffic")
+        metrics["data.traffic"]    =  config.get("Metrics", "dataTraffic")
     except configparser.NoSectionError:
         print("Config file contains error! Reason: Missing section.")
         raise
@@ -29,6 +30,6 @@ def importConf(path_to_file):
         print("Config file contains error! Reason: Missing section-header.")
         raise
 
-    return params
+    return params, metrics
 
 

@@ -51,10 +51,10 @@ class std (Collection):
     class user (Collection.Group):
 
         class count (Collection.Group.Metric):
-
+            name = "user.count"
             @staticmethod
             def harvest():
-                return Metrics("user.count", len(ps.get_users()))
+                return Metrics(std.user.count.name, len(ps.get_users()))
 
     class network (Collection.Group):
 
