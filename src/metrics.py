@@ -7,34 +7,45 @@ import collections
 Metrics = collections.namedtuple("Metrics", ["name", "value"])
 
 class Collection (object):
-
     class Group (object):
+        class Metric (object):
+            name = "unknown"
+            collector_function = 0
+            collector_function_arguments = {}
+            collector_function_result_attr = ""
 
-       class Metric (object):
+            @classmethod
+            def harvest(cls):
+                query = cls.collector_function(**cls.collector_function_arguments)
+                if ((isinstance(query, list)) or (isinstance(query, dict))):
+                    return Metrics(cls.name,
+                            query[cls.collector_function_result_attr])
+                elif (isinstance(query,tuple)):
+                    return Metrics(cls.name,
+                            query.__getattribute__(cls.collector_function_result_attr))
+                else:
+                    return Metrics(cls.name,
+                            query)
 
-            @staticmethod
-            def harvest():
-                raise NotImplementedError("You must implement the harvest method.")
 ####################################################################################
-
 
 class std (Collection):
 
     class cpu (Collection.Group):
 
         class usage (Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("cpu.usage", ps.cpu_percent(0))
+            collector_function = ps.cpu_percent
+            collector_function_arguments = {
+                'interval': 0,
+            }
+            name = "cpu.usage"
 
     class memory (Collection.Group):
 
         class usage(Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("memory.usage", ps.virtmem_usage().percent)
+            name = "memory.usage"
+            collector_function = ps.virtmem_usage
+            collector_function_result_attr = "percent"
 
 
     class user (Collection.Group):
@@ -48,33 +59,27 @@ class std (Collection):
     class network (Collection.Group):
 
         class packages_sent (Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("network.packages_sent",  ps.network_io_counters().packets_sent)
+            name = "network.packages_sent"
+            collector_function = ps.network_io_counters
+            collector_function_result_attr = "packets_sent"
 
         class packages_received (Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("network.packages_received",  ps.network_io_counters().packets_recv)
+            name = "network.packages_received"
+            collector_function = ps.network_io_counters
+            collector_function_result_attr = "packets_recv"
 
         class bytes_sent (Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("network.bytes_sent", ps.network_io_counters().bytes_sent)
+             name = "network.bytes_sent"
+             collector_function = ps.network_io_counters
+             collector_function_result_attr = "bytes_sent"
 
         class bytes_received(Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("network.bytes_recv",  ps.network_io_counters().bytes_recv)
+            name = "network.bytes_received"
+            collector_function = ps.network_io_counters
+            collector_function_result_attr = "bytes_recv"
 
     class system (Collection.Group):
 
         class boot_time (Collection.Group.Metric):
-
-            @staticmethod
-            def harvest():
-                return Metrics("system.boot_time", ps.get_boot_time())
+            name = "system.boot_time"
+            collector_function = ps.get_boot_time

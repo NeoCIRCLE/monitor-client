@@ -3,28 +3,32 @@ from metrics import *
 class collectables:
 
     __collectables = {
-        "cpu.usage":                    [std.cpu.usage],
-        "memory.usage":                 [std.memory.usage],
-        "network.packages_sent":        [std.network.packages_sent],
-        "network.packages_received":    [std.network.packages_received],
-        "network.bytes_sent":           [std.network.bytes_sent],
-        "network.bytes_received":       [std.network.bytes_received],
-        "network":                      [std.network.bytes_sent,
-                                        std.network.bytes_received,
-                                        std.network.packages_sent,
-                                        std.network.packages_received],
+        std.cpu.usage.name:                     [std.cpu.usage],
+        std.memory.usage.name:                  [std.memory.usage],
+        std.network.packages_sent.name:         [std.network.packages_sent],
+        std.network.packages_received.name:     [std.network.packages_received],
+        std.network.bytes_sent.name:            [std.network.bytes_sent],
+        std.network.bytes_received.name:        [std.network.bytes_received],
+        "network":                              [std.network.bytes_sent,
+                                                std.network.bytes_received,
+                                                std.network.packages_sent,
+                                                std.network.packages_received],
     }
 
     @staticmethod
-    def list():
+    def listKeys():
         return list(collectables.__collectables.keys())
 
     @staticmethod
-    def keyToSet(key):
+    def listMetricsToKey(key):
         return collectables.__collectables[key]
 
     @staticmethod
-    def provide( requests = []):
+    def listMetricsNameToKey(key):
+        return [x.name for x in collectables.__collectables[key]]
+
+    @staticmethod
+    def provide(requests = []):
         collectors = []
         for request in requests:
             for item in collectables.__collectables[request]:
@@ -35,6 +39,6 @@ class collectables:
 
     @staticmethod
     def provideAll():
-        return collectables.provide(collectables.list())
+        return collectables.provide(collectables.listKeys())
 
 
