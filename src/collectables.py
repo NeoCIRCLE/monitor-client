@@ -28,7 +28,7 @@ class collectables:
     def listMetricsNameToKey(key):
         return [x.name for x in collectables.__collectables[key]]
 
-     @staticmethod
+    @staticmethod
     def provide(requests = []):
         valid_keys = collectables.listKeys()
         reqs = [request for request, value in requests.items() if value=="True"]
