@@ -16,13 +16,12 @@ class Collection (object):
 
             @classmethod
             def harvest(cls):
-                print(cls.collector_function_arguments)
-                query = cls.collector_function(**cls.collector_function_arguments)
+                query = cls.collector_function.im_func(**cls.collector_function_arguments)
                 if ((isinstance(query, list)) or (isinstance(query, dict))):
-                    return Metrics(name,
+                    return Metrics(cls.name,
                                 query[cls.collector_function_result_attr])
                 elif (isinstance(query,tuple)):
-                    return Metrics(name,
+                    return Metrics(cls.name,
                                 query.__getattribute__(cls.collector_function_result_attr))
                 else:
                     return Metrics(cls.name,
@@ -35,11 +34,11 @@ class std (Collection):
     class cpu (Collection.Group):
 
         class usage (Collection.Group.Metric):
+            name = "cpu.usage"
             collector_function = ps.cpu_percent
             collector_function_arguments = {
                 'interval': 0.0,
             }
-            name = "cpu.usage"
 
     class memory (Collection.Group):
 
