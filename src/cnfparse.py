@@ -1,4 +1,4 @@
-import ConfigParser as configparser
+import configparser
 
 def importConf(path_to_file):
     config = configparser.RawConfigParser(allow_no_value = False)

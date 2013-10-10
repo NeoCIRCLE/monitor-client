@@ -12,8 +12,8 @@ class Client:
         modul. It is a dictionary: {server_address, server_port, frequency,
         debugMode, amqp_user, amqp_pass, amqp_queue}.
         """
-	hostname = socket.gethostname().split('.')
-	hostname.reverse()
+        hostname = socket.gethostname().split('.')
+        hostname.reverse()
         self.name = "circle." + ".".join(hostname)
         self.server_address = str(config["server_address"])
         self.server_port = int(config["server_port"])
@@ -30,7 +30,7 @@ class Client:
         """
         try:
             credentials = pika.PlainCredentials(self.amqp_user, self.amqp_pass)
-	    self.connection = pika.BlockingConnection(pika.ConnectionParameters(
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(
                                 host=self.server_address,
                                 port=self.server_port,
                                 credentials=credentials
@@ -39,7 +39,7 @@ class Client:
             self.channel = self.connection.channel()
             return True
         except:
-	    raise 
+            raise
 
     def __disconnect(self):
         """
@@ -95,5 +95,3 @@ class Client:
             print("Reporting has stopped by the user. Exiting...")
         finally:
             self.__disconnect()
-
-
