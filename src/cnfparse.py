@@ -18,8 +18,7 @@ def importConf(path_to_file):
         metrics["user.count"]      =  config.get("Metrics", "userCount")
         metrics["swap.usage"]      =  config.get("Metrics", "swapUsage")
         metrics["system.boot_time"]=  config.get("Metrics", "systemBootTime")
-        metrics["package.traffic"] =  config.get("Metrics", "packageTraffic")
-        metrics["data.traffic"]    =  config.get("Metrics", "dataTraffic")
+        metrics["network"]    =  config.get("Metrics", "dataTraffic")
     except configparser.NoSectionError:
         print("Config file contains error! Reason: Missing section.")
         raise

@@ -47,6 +47,12 @@ class std (Collection):
             collector_function = ps.virtmem_usage
             collector_function_result_attr = "percent"
 
+    class swap (Collection.Group):
+
+        class usage(Collection.Group.Metric):
+            name = "swap.usage"
+            collector_function = ps.swap_memory
+            collector_function_result_attr = "percent"
 
     class user (Collection.Group):
 
