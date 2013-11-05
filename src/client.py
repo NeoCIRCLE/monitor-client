@@ -22,6 +22,7 @@ class Client:
         self.amqp_user = str(config["amqp_user"])
         self.amqp_pass = str(config["amqp_pass"])
         self.amqp_queue = str(config["amqp_queue"])
+        self.amqp_virtual_host = str(config["amqp_virtual_host"])
 
     def __connect(self):
         """
@@ -33,6 +34,7 @@ class Client:
             self.connection = pika.BlockingConnection(pika.ConnectionParameters(
                                 host=self.server_address,
                                 port=self.server_port,
+                                virtual_host=self.amqp_virtual_host,
                                 credentials=credentials
                             )
                      )
