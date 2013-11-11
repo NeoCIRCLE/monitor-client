@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import platform, collections, time, socket, pika, struct, os
+import platform, collections, time, socket, pika, struct
 import logging
 logging.basicConfig()
 
@@ -8,18 +8,21 @@ class Client:
 
     def __init__(self, config):
         """
+        Constructor of the client requires a configuration provided by cnfparse
+        modul. It is a dictionary: {server_address, server_port, frequency,
+        debugMode, amqp_user, amqp_pass, amqp_queue}.
         """
         hostname = socket.gethostname().split('.')
         hostname.reverse()
         self.name = "circle." + ".".join(hostname)
-        self.server_address = str(os.getenv("GRAPHITE_SERVER_ADDRESS"))
-        self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT"))
-        self.amqp_user = str(os.getenv("AMQP_USER"))
-        self.amqp_pass = str(os.getenv("AMQP_PASS"))
-        self.amqp_queue = str(os.getenv("AMQP_QUEUE"))
-        self.amqp_virtual_host = str(os.getenv("AMQP_VIRTUAL_HOST"))
-        self.beat = 1
+        self.server_address = str(config["server_address"])
+        self.server_port = int(config["server_port"])
+        self.delay = int(config["frequency"])
         self.debugMode = config["debugMode"]
+        self.amqp_user = str(config["amqp_user"])
+        self.amqp_pass = str(config["amqp_pass"])
+        self.amqp_queue = str(config["amqp_queue"])
+        self.amqp_virtual_host = str(config["amqp_virtual_host"])
 
     def __connect(self):
         """
@@ -61,21 +64,13 @@ class Client:
         """
         metrics = []
         for collector in metricCollectors:
-            if (collector[1] % self.beat) is 0:
-                stat = collector[0]()
-                metrics.append((
+            stat = collector()
+            metrics.append((
                 self.name + "." + stat.name  +
                 " %d" % (stat.value)         +
                 " %d" % (time.time())
-                ))
+            ))
         return metrics
-    
-    def __getMaxBeat(self, metricCollectors = []):
-        max = 0
-        for item in metricCollectors:
-            if max < item[1]:
-                max = item[1]
-        return max
 
     def startReporting(self, metricCollectors = [], debugMode = False):
         """
@@ -92,16 +87,12 @@ class Client:
                   (self.server_address, self.server_port, self.delay, self.name)
                   )
         try:
-            max_beat  = self.__getMaxBeat(metricCollectors)
             while True:
                 metrics =  self.__collectFromNode(metricCollectors)
                 if self.debugMode == "True":
                     print(metrics)
                 self.__send(metrics)
-                time.sleep(1)
-                self.beat++
-                if self.beat > max_beat:
-                    self.beat = 1 
+                time.sleep(self.delay)
         except KeyboardInterrupt:
             print("Reporting has stopped by the user. Exiting...")
         finally:
