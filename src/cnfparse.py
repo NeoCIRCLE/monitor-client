@@ -6,14 +6,7 @@ def importConf(path_to_file):
         config.read(path_to_file)
         params = {}
         metrics = {}
-        params["frequency"]       =  config.get("Client" , "Frequency")
         params["debugMode"]       =  config.get("Client" , "Debug")
-        params["server_address"]  =  config.get("Server" , "Address")
-        params["server_port"]     =  config.get("Server" , "Port")
-        params["amqp_queue"]      =  config.get("AMQP"   , "Queue")
-        params["amqp_user"]       =  config.get("AMQP"   , "User")
-        params["amqp_pass"]       =  config.get("AMQP"   , "Pass")
-        params["amqp_virtual_host"] =  config.get("AMQP"   , "Vhost")
         metrics["cpu.usage"]       =  config.get("Metrics", "cpuUsage")
         metrics["memory.usage"]    =  config.get("Metrics", "memoryUsage")
         metrics["user.count"]      =  config.get("Metrics", "userCount")

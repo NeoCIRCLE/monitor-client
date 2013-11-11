@@ -33,11 +33,11 @@ class collectables:
     @staticmethod
     def provide(requests = []):
         valid_keys = collectables.listKeys()
-        reqs = [request for request, value in requests.items() if value=="True"]
+        reqs = [request for request, value in requests.items() if int(value)>0]
         collectors = []
         for request in reqs:
             for item in collectables.__collectables[request]:
-                collectors.append(item.harvest)
+                collectors.append([item.harvest,value])
         seen = set()
         seen_add = seen.add
         return [ x for x in collectors if x not in seen and not seen_add(x)]
