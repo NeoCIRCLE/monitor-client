@@ -3,8 +3,10 @@
 import psutil as ps
 import collections
 
-####################################################################################
+
+#############################################################################
 Metrics = collections.namedtuple("Metrics", ["name", "value"])
+
 
 class Collection (object):
     class Group (object):
@@ -19,15 +21,15 @@ class Collection (object):
                 query = cls.collector_function.im_func(**cls.collector_function_arguments)
                 if ((isinstance(query, list)) or (isinstance(query, dict))):
                     return Metrics(cls.name,
-                                query[cls.collector_function_result_attr])
-                elif (isinstance(query,tuple)):
+                                   query[cls.collector_function_result_attr])
+                elif (isinstance(query, tuple)):
                     return Metrics(cls.name,
-                                query.__getattribute__(cls.collector_function_result_attr))
+                                   query.__getattribute__(cls.collector_function_result_attr))
                 else:
-                    return Metrics(cls.name,
-                                query)
+                    return Metrics(cls.name, query)
 
-####################################################################################
+##############################################################################
+
 
 class std (Collection):
 
@@ -58,6 +60,7 @@ class std (Collection):
 
         class count (Collection.Group.Metric):
             name = "user.count"
+
             @classmethod
             def harvest(cls):
                 return Metrics(cls.name, len(ps.get_users()))
@@ -75,9 +78,9 @@ class std (Collection):
             collector_function_result_attr = "packets_recv"
 
         class bytes_sent (Collection.Group.Metric):
-             name = "network.bytes_sent"
-             collector_function = ps.network_io_counters
-             collector_function_result_attr = "bytes_sent"
+            name = "network.bytes_sent"
+            collector_function = ps.network_io_counters
+            collector_function_result_attr = "bytes_sent"
 
         class bytes_received(Collection.Group.Metric):
             name = "network.bytes_received"

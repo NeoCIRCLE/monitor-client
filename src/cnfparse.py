@@ -1,25 +1,20 @@
 import ConfigParser as configparser
 
+
 def importConf(path_to_file):
-    config = configparser.RawConfigParser(allow_no_value = False)
+    config = configparser.RawConfigParser(allow_no_value=False)
     try:
         config.read(path_to_file)
         params = {}
         metrics = {}
-        params["frequency"]       =  config.get("Client" , "Frequency")
-        params["debugMode"]       =  config.get("Client" , "Debug")
-        params["server_address"]  =  config.get("Server" , "Address")
-        params["server_port"]     =  config.get("Server" , "Port")
-        params["amqp_queue"]      =  config.get("AMQP"   , "Queue")
-        params["amqp_user"]       =  config.get("AMQP"   , "User")
-        params["amqp_pass"]       =  config.get("AMQP"   , "Pass")
-        params["amqp_virtual_host"] =  config.get("AMQP"   , "Vhost")
-        metrics["cpu.usage"]       =  config.get("Metrics", "cpuUsage")
-        metrics["memory.usage"]    =  config.get("Metrics", "memoryUsage")
-        metrics["user.count"]      =  config.get("Metrics", "userCount")
-        metrics["swap.usage"]      =  config.get("Metrics", "swapUsage")
-        metrics["system.boot_time"]=  config.get("Metrics", "systemBootTime")
-        metrics["network"]    =  config.get("Metrics", "dataTraffic")
+        params["debugMode"] = config.get("Client", "Debug")
+        metrics["cpu.usage"] = int(config.get("Metrics", "cpuUsage"))
+        metrics["memory.usage"] = int(config.get("Metrics", "memoryUsage"))
+        metrics["user.count"] = int(config.get("Metrics", "userCount"))
+        metrics["swap.usage"] = int(config.get("Metrics", "swapUsage"))
+        metrics["system.boot_time"] = int(config.get("Metrics",
+                                                     "systemBootTime"))
+        metrics["network"] = int(config.get("Metrics", "dataTraffic"))
     except configparser.NoSectionError:
         print("Config file contains error! Reason: Missing section.")
         raise
@@ -31,5 +26,3 @@ def importConf(path_to_file):
         raise
 
     return params, metrics
-
-
