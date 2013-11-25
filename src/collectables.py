@@ -32,15 +32,15 @@ class collectables:
     @staticmethod
     def provide(requests=[]):
         #valid_keys = collectables.listKeys()
-        reqs = [request for request, value in requests.items()
-                if value > 0]
+        reqs = []
+	for requests, value in requests.items():
+		if value>0:
+			reqs.append([requests, value])
         collectors = []
         for request in reqs:
-            for item in collectables.__collectables[request]:
-                collectors.append([item.harvest, value])
-        seen = set()
-        seen_add = seen.add
-        return [x for x in collectors if x not in seen and not seen_add(x)]
+            for item in collectables.__collectables[request[0]]:
+                collectors.append([item.harvest, request[1]])
+	return collectors
 
     @staticmethod
     def provideAll():

@@ -21,7 +21,7 @@ def importConf(path_to_file):
     except configparser.ParsingError:
         print("Config file contains error! Reason: Cannot parse.")
         raise
-    except configparser.MissingSectionHeader:
+    except configparser.MissingSectionHeaderError:
         print("Config file contains error! Reason: Missing section-header.")
         raise
 

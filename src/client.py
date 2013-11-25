@@ -60,7 +60,7 @@ class Client:
         """
         Send the message given in the parameters.
         """
-        self.channel.basic_publish(exchange=self. amqp_queue,
+        self.channel.basic_publish(exchange=self.amqp_queue,
                                    routing_key='', body="\n".join(message))
 
     def __collectFromNode(self, metricCollectors):
@@ -96,9 +96,9 @@ class Client:
                   % (self.server_address + ":" + str(self.server_port)))
         else:
             print("Connection established to %s on port %s. \
-                  Report frequency is %d sec. Clientname: %s"
+                  Clientname: %s"
                   % (self.server_address, self.server_port,
-                     self.delay, self.name))
+                     self.name))
         try:
             maxFrequency = self.getMaxFrequency(metricCollectors)
             while True:
