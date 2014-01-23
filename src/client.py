@@ -5,7 +5,7 @@
 import time
 import socket
 import pika
-# import struct
+import psutil
 import logging
 import os
 
@@ -77,7 +77,36 @@ class Client:
                                 + " %d" % (time.time())
                                 ))
         return metrics
-
+    
+    def __collectFromVMs(self):
+        metrics = []
+        running_vms = []
+        for entry in psutil.get_process_list():
+            if entry.name in "kvm":
+                search = [cmd_param_index for cmd_param_index, cmd_param in 
+                          enumerate(entry.as_dict()["cmdline"])
+                          if cmd_param == "-name"]
+                memory = [cmd_param_index for cmd_param_index, cmd_param in 
+                          enumerate(entry.as_dict()["cmdline"])
+                          if cmd_param == "-m"]
+                running_vms.append([entry.as_dict()["cmdline"][search[0]+1],
+                                    entry.pid,
+                                    int(entry.as_dict()["cmdline"][memory[0]+1])])
+        for vm in running_vms:
+            vm_proc = psutil.Process(vm[1])
+            metrics.append((self.name + "." + "kvm." +
+                            vm[0] + "." + "memory.usage." +
+                            " %d" % (vm_proc.get_memory_percent()/100*vm[2])
+                            + " %d" % (time.time())
+                            ))
+            metrics.append((self.name + "." + "kvm." +
+                            vm[0] + "." + "cpu.usage" +
+                            " %d" % (vm_proc.get_cpu_times().system +
+                                     vm_proc.get_cpu_times().user)
+                            + " %d" % (time.time())
+                            ))
+        return metrics
+        
     def getMaxFrequency(self, metricCollectors=[]):
         max = metricCollectors[0][1]
         for item in metricCollectors:
@@ -103,6 +132,7 @@ class Client:
             maxFrequency = self.getMaxFrequency(metricCollectors)
             while True:
                 metrics = self.__collectFromNode(metricCollectors)
+                metrics.append(self.__collectFromVMs())
                 if self.debugMode == "True":
                     print(metrics)
                 self.__send(metrics)

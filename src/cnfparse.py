@@ -15,6 +15,8 @@ def importConf(path_to_file):
         metrics["system.boot_time"] = int(config.get("Metrics",
                                                      "systemBootTime"))
         metrics["network"] = int(config.get("Metrics", "dataTraffic"))
+        metrics["kvmCpuUsage"] = int(config.get("KVM", "cpuUsage"))
+        metrics["kvmMemoryUsage"] = int(config.get("KVM", "memoryUsage"))
     except configparser.NoSectionError:
         print("Config file contains error! Reason: Missing section.")
         raise
