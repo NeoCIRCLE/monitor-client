@@ -21,7 +21,7 @@ class Client:
         hostname.reverse()
         self.name = "circle." + ".".join(hostname)
         self.server_address = str(os.getenv("GRAPHITE_SERVER_ADDRESS"))
-        self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT"))
+        self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT").__str__())
         self.debugMode = config["debugMode"]
         self.amqp_user = str(os.getenv("GRAPHITE_AMQP_USER"))
         self.amqp_pass = str(os.getenv("GRAPHITE_AMQP_PASSWORD"))
