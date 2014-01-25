@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-# import platform
-# import collections
 import time
 import socket
 import pika
@@ -14,7 +12,6 @@ logging.basicConfig()
 
 
 class Client:
-
     def __init__(self, config):
         """
         Constructor of the client requires a configuration provided by cnfparse
@@ -75,38 +72,38 @@ class Client:
                 metrics.append((self.name + "." +
                                 stat.name + " %d" % (stat.value)
                                 + " %d" % (time.time())
-                                ))
+                ))
         return metrics
-    
+
     def __collectFromVMs(self):
         metrics = []
         running_vms = []
         for entry in psutil.get_process_list():
             if entry.name in "kvm":
-                search = [cmd_param_index for cmd_param_index, cmd_param in 
+                search = [cmd_param_index for cmd_param_index, cmd_param in
                           enumerate(entry.as_dict()["cmdline"])
                           if cmd_param == "-name"]
-                memory = [cmd_param_index for cmd_param_index, cmd_param in 
+                memory = [cmd_param_index for cmd_param_index, cmd_param in
                           enumerate(entry.as_dict()["cmdline"])
                           if cmd_param == "-m"]
-                running_vms.append([entry.as_dict()["cmdline"][search[0]+1],
+                running_vms.append([entry.as_dict()["cmdline"][search[0] + 1],
                                     entry.pid,
-                                    int(entry.as_dict()["cmdline"][memory[0]+1])])
+                                    int(entry.as_dict()["cmdline"][memory[0] + 1])])
         for vm in running_vms:
             vm_proc = psutil.Process(vm[1])
             metrics.append((self.name + "." + "kvm." +
                             vm[0] + "." + "memory.usage." +
-                            " %d" % (vm_proc.get_memory_percent()/100*vm[2])
+                            " %d" % (vm_proc.get_memory_percent() / 100 * vm[2])
                             + " %d" % (time.time())
-                            ))
+            ))
             metrics.append((self.name + "." + "kvm." +
                             vm[0] + "." + "cpu.usage" +
                             " %d" % (vm_proc.get_cpu_times().system +
                                      vm_proc.get_cpu_times().user)
                             + " %d" % (time.time())
-                            ))
+            ))
         return metrics
-        
+
     def getMaxFrequency(self, metricCollectors=[]):
         max = metricCollectors[0][1]
         for item in metricCollectors:
