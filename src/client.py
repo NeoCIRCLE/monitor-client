@@ -84,7 +84,7 @@ class Client:
 		"""
 		try:
 			self.channel.basic_publish(exchange=self.amqp_queue,
-		                               routing_key='', body="\n".join(message))
+			                           routing_key='', body="\n".join(message))
 			return True
 		except:
 			print("[ERROR] An error has occured while sending metrics to the "
