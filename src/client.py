@@ -20,6 +20,23 @@ class Client:
 		hostname = socket.gethostname().split('.')
 		hostname.reverse()
 		self.name = "circle." + ".".join(hostname)
+		if os.getenv("GRAPHITE_SERVER_ADDRESS") is None:
+			print("GRAPHITE_SERVER_ADDRESS cannot be found in environmental "
+			      "variables"
+			)
+		if os.getenv("GRAPHITE_SERVER_PORT") is None:
+			print("GRAPHITE_SERVER_PORT cannot be found in environmental "
+			      "variables. (AMQP standard is: 5672"
+			)
+		if os.getenv("GRAPHITE_AMQP_USER") is None or os.getenv("GRAPHITE_AMQP_PASSWORD") is None:
+			print("GRAPHITE_AMQP_USER or GRAPHITE_AMQP_PASSWORD cannot be "
+			      "found in environmental variables. (AMQP standard is: "
+			      "guest-guest)"
+			)
+		if os.getenv("GRAPHITE_AMQP_QUEUE") is None or os.getenv("GRAPHITE_AMQP_VHOST") is None:
+			print("GRAPHITE_AMQP_QUEUE or GRAPHITE_AMQP_VHOST cannot be "
+			      "found in environmental variables."
+			)
 		self.server_address = str(os.getenv("GRAPHITE_SERVER_ADDRESS"))
 		self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT"))
 		self.debugMode = config["debugMode"]
@@ -28,23 +45,7 @@ class Client:
 		self.amqp_queue = str(os.getenv("GRAPHITE_AMQP_QUEUE"))
 		self.amqp_vhost = str(os.getenv("GRAPHITE_AMQP_VHOST"))
 		self.beat = 1
-		if self.server_address is None:
-			print("GRAPHITE_SERVER_ADDRESS cannot be found in environmental "
-			      "variables"
-			)
-		if self.server_port is None:
-			print("GRAPHITE_SERVER_PORT cannot be found in environmental "
-			      "variables. (AMQP standard is: 5672"
-			)
-		if self.amqp_user is None or self.amqp_user is None:
-			print("GRAPHITE_AMQP_USER or GRAPHITE_AMQP_PASSWORD cannot be "
-			      "found in environmental variables. (AMQP standard is: "
-			      "guest-guest)"
-			)
-		if self.amqp_queue is None or self.amqp_vhost is None:
-			print("GRAPHITE_AMQP_QUEUE or GRAPHITE_AMQP_VHOST cannot be "
-			      "found in environmental variables."
-			)
+
 
 
 	def __connect(self):
