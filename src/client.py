@@ -168,7 +168,8 @@ class Client:
 				if len(vmMetrics) is not 0:
 					metrics.append(vmMetrics)
 				if self.debugMode == "True" and len(metrics) is not 0:
-					print("[*" + self.beat + "] " + metrics)
+					print(metrics)
+
 				if self.__send(metrics) is False:
 					raise RuntimeError
 				time.sleep(1)
