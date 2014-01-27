@@ -39,7 +39,7 @@ class std(Collection):
 			name = "cpu.usage"
 			collector_function = ps.cpu_percent
 			collector_function_arguments = {
-				'interval': 0.0,
+			'interval': 0.0,
 			}
 
 	class memory(Collection.Group):

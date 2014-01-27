@@ -14,43 +14,60 @@ logging.basicConfig()
 class Client:
 	def __init__(self, config):
 		"""
-		Constructor of the client requires a configuration provided by cnfparse
-		modul. It is a dictionary: {debugMode}
+		Constructor of the client class that is responsible for handling the
+		communication between the graphite server and the data source. In
+		order to initialize a client you must have the following
+		environmental varriables:
+		- GRAPHITE_SERVER_ADDRESS:
+		- GRAPHITE_SERVER_PORT:
+		- GRAPHITE_AMQP_USER:
+		- GRAPHITE_AMQP_PASSWORD:
+		- GRAPHITE_AMQP_QUEUE:
+		- GRAPHITE_AMQP_VHOST:
+		Missing only one of these variables will cause the client not to work.
 		"""
 		hostname = socket.gethostname().split('.')
 		hostname.reverse()
 		self.name = "circle." + ".".join(hostname)
-		if os.getenv("GRAPHITE_SERVER_ADDRESS") is None:
+		if os.getenv("GRAPHITE_SERVER_ADDRESS") is "":
 			print("GRAPHITE_SERVER_ADDRESS cannot be found in environmental "
 			      "variables"
 			)
-		if os.getenv("GRAPHITE_SERVER_PORT") is None:
+			return
+		if os.getenv("GRAPHITE_SERVER_PORT") is "":
 			print("GRAPHITE_SERVER_PORT cannot be found in environmental "
 			      "variables. (AMQP standard is: 5672"
 			)
-		if os.getenv("GRAPHITE_AMQP_USER") is None or os.getenv("GRAPHITE_AMQP_PASSWORD") is None:
+			return
+		if os.getenv("GRAPHITE_AMQP_USER") is "" or os.getenv(
+				"GRAPHITE_AMQP_PASSWORD") is "":
 			print("GRAPHITE_AMQP_USER or GRAPHITE_AMQP_PASSWORD cannot be "
 			      "found in environmental variables. (AMQP standard is: "
 			      "guest-guest)"
 			)
-		if os.getenv("GRAPHITE_AMQP_QUEUE") is None or os.getenv("GRAPHITE_AMQP_VHOST") is None:
+			return
+		if os.getenv("GRAPHITE_AMQP_QUEUE") is "" or os.getenv(
+				"GRAPHITE_AMQP_VHOST") is "":
 			print("GRAPHITE_AMQP_QUEUE or GRAPHITE_AMQP_VHOST cannot be "
 			      "found in environmental variables."
 			)
+			return
 		self.server_address = str(os.getenv("GRAPHITE_SERVER_ADDRESS"))
 		self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT"))
-		self.debugMode = config["debugMode"]
 		self.amqp_user = str(os.getenv("GRAPHITE_AMQP_USER"))
 		self.amqp_pass = str(os.getenv("GRAPHITE_AMQP_PASSWORD"))
 		self.amqp_queue = str(os.getenv("GRAPHITE_AMQP_QUEUE"))
 		self.amqp_vhost = str(os.getenv("GRAPHITE_AMQP_VHOST"))
+		self.debugMode = config["debugMode"]
+		self.kvmCPU = int(config["kvmCpuUsage"])
+		self.kvmMem = int(config["kvmMemoryUsage"])
 		self.beat = 1
-
 
 
 	def __connect(self):
 		"""
-		This method creates the connection to the queue of the graphite server.
+		This method creates the connection to the queue of the graphite
+		server using the environmental variables given in the constructor.
 		Returns true if the connection was successful.
 		"""
 		try:
@@ -66,10 +83,17 @@ class Client:
 			print ("[ERROR] Cannot connect to the server. "
 			       "Parameters could be wrong."
 			)
+			return False
+		except:
+			print ("[ERROR] Cannot connect to the server. There is no one "
+			       "listening on the other side."
+			)
+			return False
 
 	def __disconnect(self):
 		"""
-		Break up the connection to the graphite server.
+		Break up the connection to the graphite server. If something went
+		wrong while disconnecting it simply cut the connection up.
 		"""
 		try:
 			self.channel.close()
@@ -81,7 +105,10 @@ class Client:
 
 	def __send(self, message):
 		"""
-		Send the message given in the parameters.
+		Send the message given in the parameters given in the message
+		parameter. This function expects that the graphite server want the
+		metric name given in the message body. (This option must be enabled
+		on the server. Otherwise it can't parse the data sent.)
 		"""
 		try:
 			self.channel.basic_publish(exchange=self.amqp_queue,
@@ -96,7 +123,8 @@ class Client:
 	def __collectFromNode(self, metricCollectors):
 		"""
 		It harvests the given metrics in the metricCollectors list. This list
-		should be provided by the collectables modul.
+		should be provided by the collectables modul. It is important that
+		only the information collected from the node is provided here.
 		"""
 		metrics = []
 		for collector in metricCollectors:
@@ -109,6 +137,11 @@ class Client:
 		return metrics
 
 	def __collectFromVMs(self):
+		"""
+		This method is used for fetching the kvm processes running on the
+		node and using the cmdline parameters calculates different types of
+		resource usages about the vms.
+		"""
 		metrics = []
 		running_vms = []
 		for entry in psutil.get_process_list():
@@ -125,27 +158,34 @@ class Client:
 					                    memory[0] + 1])])
 		for vm in running_vms:
 			vm_proc = psutil.Process(vm[1])
-			metrics.append((self.name + "." + "kvm." +
-			                vm[0] + "." + "memory.usage." +
-			                " %d" % (vm_proc.get_memory_percent() / 100 * vm[2])
-			                + " %d" % (time.time())
-			))
-			metrics.append((self.name + "." + "kvm." +
-			                vm[0] + "." + "cpu.usage" +
-			                " %d" % (vm_proc.get_cpu_times().system +
-			                         vm_proc.get_cpu_times().user)
-			                + " %d" % (time.time())
-			))
+			if (self.beat % self.kvmCPU) is 0:
+				metrics.append((self.name + "." + "kvm." +
+				                vm[0] + "." + "memory.usage" +
+				                " %d" % (
+				                vm_proc.get_memory_percent() / 100 * vm[2])
+				                + " %d" % (time.time())
+				))
+			if (self.beat % self.kvmMem) is 0:
+				metrics.append((self.name + "." + "kvm." +
+				                vm[0] + "." + "cpu.usage" +
+				                " %d" % (vm_proc.get_cpu_times().system +
+				                         vm_proc.get_cpu_times().user)
+				                + " %d" % (time.time())
+				))
 		return metrics
 
 	def getMaxFrequency(self, metricCollectors=[]):
-		max = metricCollectors[0][1]
-		for item in metricCollectors:
+		"""
+		"""
+		items = metricCollectors + [["kvmCpuUsage", self.kvmMem], [
+			"kvmMemoryUsage", self.kvmCPU]]
+		max = items[0][1]
+		for item in items:
 			if max < item[1]:
 				max = item[1]
 		return max
 
-	def startReporting(self, metricCollectors=[], debugMode=False):
+	def startReporting(self, metricCollectors=[]):
 		"""
 		Call this method to start reporting to the server, it needs the
 		metricCollectors parameter that should be provided by the collectables
@@ -163,13 +203,11 @@ class Client:
 		try:
 			maxFrequency = self.getMaxFrequency(metricCollectors)
 			while True:
-				metrics = self.__collectFromNode(metricCollectors)
+				nodeMetrics = self.__collectFromNode(metricCollectors)
 				vmMetrics = self.__collectFromVMs()
-				if len(vmMetrics) is not 0:
-					metrics.append(vmMetrics)
-				if self.debugMode == "True" and len(metrics) is not 0:
+				metrics = nodeMetrics + vmMetrics
+				if self.debugMode == "True":
 					print(metrics)
-
 				if self.__send(metrics) is False:
 					raise RuntimeError
 				time.sleep(1)
