@@ -208,8 +208,9 @@ class Client:
 				metrics = nodeMetrics + vmMetrics
 				if self.debugMode == "True":
 					print(metrics)
-				if self.__send(metrics) is False:
-					raise RuntimeError
+				if len(metrics) is not 0:
+					if self.__send(metrics) is False:
+						raise RuntimeError
 				time.sleep(1)
 				self.beat = self.beat + 1
 				if ((self.beat % (maxFrequency + 1)) is 0):
