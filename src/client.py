@@ -144,28 +144,37 @@ class Client:
 		"""
 		metrics = []
 		running_vms = []
-		for entry in psutil.get_process_list():
+		procList = psutil.get_process_list()
+		for entry in procList:
 			if entry.name in "kvm":
+				cmdLine = entry.as_dict()["cmdline"]
 				search = [cmd_param_index for cmd_param_index, cmd_param in
-				          enumerate(entry.as_dict()["cmdline"])
+				          enumerate(cmdLine)
 				          if cmd_param == "-name"]
+				if not entry.is_running():
+					break
 				memory = [cmd_param_index for cmd_param_index, cmd_param in
-				          enumerate(entry.as_dict()["cmdline"])
+				          enumerate(cmdLine)
 				          if cmd_param == "-m"]
-				running_vms.append([entry.as_dict()["cmdline"][search[0] + 1],
-				                    entry.pid,
-				                    int(entry.as_dict()["cmdline"][
-					                    memory[0] + 1])])
+				if not entry.is_running():
+					break
+				try:
+					running_vms.append([cmdLine[search[0] + 1],
+					                    entry.pid,
+					                    int(entry.as_dict()["cmdline"][
+						                    memory[0] + 1])])
+				except IndexError:
+					pass
 		for vm in running_vms:
 			vm_proc = psutil.Process(vm[1])
-			if (self.beat % self.kvmCPU) is 0:
+			if ((self.beat % self.kvmCPU) is 0) and vm_proc.is_running():
 				metrics.append((self.name + "." + "kvm." +
 				                vm[0] + "." + "memory.usage" +
 				                " %d" % (
 				                vm_proc.get_memory_percent() / 100 * vm[2])
 				                + " %d" % (time.time())
 				))
-			if (self.beat % self.kvmMem) is 0:
+			if ((self.beat % self.kvmMem) is 0) and vm_proc.is_running():
 				metrics.append((self.name + "." + "kvm." +
 				                vm[0] + "." + "cpu.usage" +
 				                " %d" % (vm_proc.get_cpu_times().system +
