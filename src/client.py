@@ -33,11 +33,13 @@ class Client:
 			print("GRAPHITE_SERVER_ADDRESS cannot be found in environmental "
 			      "variables"
 			)
+			self.valid = False
 			return
 		if os.getenv("GRAPHITE_SERVER_PORT") is "":
 			print("GRAPHITE_SERVER_PORT cannot be found in environmental "
 			      "variables. (AMQP standard is: 5672"
 			)
+			self.valid = False
 			return
 		if os.getenv("GRAPHITE_AMQP_USER") is "" or os.getenv(
 				"GRAPHITE_AMQP_PASSWORD") is "":
@@ -45,12 +47,14 @@ class Client:
 			      "found in environmental variables. (AMQP standard is: "
 			      "guest-guest)"
 			)
+			self.valid = False
 			return
 		if os.getenv("GRAPHITE_AMQP_QUEUE") is "" or os.getenv(
 				"GRAPHITE_AMQP_VHOST") is "":
 			print("GRAPHITE_AMQP_QUEUE or GRAPHITE_AMQP_VHOST cannot be "
 			      "found in environmental variables."
 			)
+			self.valid = False
 			return
 		self.server_address = str(os.getenv("GRAPHITE_SERVER_ADDRESS"))
 		self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT"))
@@ -61,7 +65,9 @@ class Client:
 		self.debugMode = config["debugMode"]
 		self.kvmCPU = int(config["kvmCpuUsage"])
 		self.kvmMem = int(config["kvmMemoryUsage"])
+		self.kvmNet = int(config["kvmNetworkUsage"])
 		self.beat = 1
+		self.valid = True
 
 
 	def __connect(self):
@@ -165,6 +171,11 @@ class Client:
 						                    memory[0] + 1])])
 				except IndexError:
 					pass
+		if ((self.beat % 30) is 0):
+			metrics.append((self.name + "." + "vmcount" +
+			                " %d" % len(running_vms)
+			                + " %d" % (time.time())
+			))
 		for vm in running_vms:
 			vm_proc = psutil.Process(vm[1])
 			if ((self.beat % self.kvmCPU) is 0) and vm_proc.is_running():
@@ -181,13 +192,47 @@ class Client:
 				                         vm_proc.get_cpu_times().user)
 				                + " %d" % (time.time())
 				))
+			interfaces_list = psutil.network_io_counters(
+				pernic=True)
+			interfaces_list_enum = enumerate(interfaces_list)
+			if ((self.beat % self.kvmNet) is 0) and vm_proc.is_running():
+				for vm in running_vms:
+					for iname_index, iname in interfaces_list_enum:
+						if vm[0] in iname:
+							metrics.append((self.name + "." + "kvm." +
+							                vm[
+								                0] + "." + "network.packages_sent" +
+							                " %d" % interfaces_list[
+								                iname].packets_sent
+							                + " %d" % (time.time())
+							))
+							metrics.append((self.name + "." + "kvm." +
+							                vm[
+								                0] + "." + "network.packages_recv" +
+							                " %d" % interfaces_list[
+								                iname].packets_recv
+							                + " %d" % (time.time())
+							))
+							metrics.append((self.name + "." + "kvm." +
+							                vm[0] + "." + "network"
+							                              ".bytes_sent" +
+							                " %d" % interfaces_list[
+								                iname].bytes_sent
+							                + " %d" % (time.time())
+							))
+							metrics.append((self.name + "." + "kvm." +
+							                vm[0] + "." + "network.bytes_recv" +
+							                " %d" % interfaces_list[
+								                iname].bytes_recv
+							                + " %d" % (time.time())
+							))
 		return metrics
 
 	def getMaxFrequency(self, metricCollectors=[]):
 		"""
 		"""
 		items = metricCollectors + [["kvmCpuUsage", self.kvmMem], [
-			"kvmMemoryUsage", self.kvmCPU]]
+			"kvmMemoryUsage", self.kvmCPU], ["kvmNetworkUsage", self.kvmNet]]
 		max = items[0][1]
 		for item in items:
 			if max < item[1]:
@@ -200,6 +245,9 @@ class Client:
 		metricCollectors parameter that should be provided by the collectables
 		modul to work properly.
 		"""
+		if self.valid is False:
+			print("[ERROR] The client cannot be started.")
+			raise RuntimeError
 		if self.__connect() is False:
 			print("[ERROR] An error has occured while connecting to the "
 			      "server on %s."
