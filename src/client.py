@@ -224,7 +224,7 @@ class Client:
                                             vm[0] +
                                             + "network.bytes_recv" +
                                             " %d" %
-                                            interfaces_list[iname].bytes_recv
+                                            (interfaces_list[iname].bytes_recv)
                                             + " %d" % (time.time())
                                             ))
         return metrics
