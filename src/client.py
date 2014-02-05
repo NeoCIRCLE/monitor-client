@@ -198,9 +198,9 @@ class Client:
                                 ))
         interfaces_list = psutil.network_io_counters(
             pernic=True)
-        interfaces_list_enum = enumerate(interfaces_list)
         if ((self.beat % self.kvmNet) is 0) and vm_proc.is_running():
             for vm in running_vms:
+                interfaces_list_enum = enumerate(interfaces_list)
                 for iname_index, iname in interfaces_list_enum:
                     if vm[0] in iname:
                         metrics.append(("vm." +
@@ -225,10 +225,10 @@ class Client:
                                         + " %d" % (time.time())
                                         ))
                         metrics.append(("vm." +
-                                        vm[0] +
-                                        + "network.bytes_recv" +
-                                        " %d" %
-                                        (interfaces_list[iname].bytes_recv)
+                                        vm[0] + "." + "network"
+                                        ".bytes_recv" +
+                                        " %d" % interfaces_list[
+                                                iname].bytes_recv
                                         + " %d" % (time.time())
                                         ))
         return metrics
