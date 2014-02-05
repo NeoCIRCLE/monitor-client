@@ -152,7 +152,11 @@ class Client:
         running_vms = []
         procList = psutil.get_process_list()
         for entry in procList:
-            if entry.name in "kvm":
+            try:
+                entry_name = entry.name
+            except psutil._error.NoSuchProcess:
+                entry_name = ""
+            if entry_name in "kvm":
                 cmdLine = entry.as_dict()["cmdline"]
                 search = [cmd_param_index for cmd_param_index, cmd_param in
                           enumerate(cmdLine)
@@ -192,41 +196,41 @@ class Client:
                                          vm_proc.get_cpu_times().user)
                                 + " %d" % (time.time())
                                 ))
-            interfaces_list = psutil.network_io_counters(
-                pernic=True)
-            interfaces_list_enum = enumerate(interfaces_list)
-            if ((self.beat % self.kvmNet) is 0) and vm_proc.is_running():
-                for vm in running_vms:
-                    for iname_index, iname in interfaces_list_enum:
-                        if vm[0] in iname:
-                            metrics.append(("vm." +
-                                            vm[0] +
-                                            "." + "network.packages_sent" +
-                                            " %d" % interfaces_list[
-                                                iname].packets_sent
-                                            + " %d" % (time.time())
-                                            ))
-                            metrics.append(("vm." +
-                                            vm[0] +
-                                            "." + "network.packages_recv" +
-                                            " %d" % interfaces_list[
-                                                iname].packets_recv
-                                            + " %d" % (time.time())
-                                            ))
-                            metrics.append(("vm." +
-                                            vm[0] + "." + "network"
-                                                          ".bytes_sent" +
-                                            " %d" % interfaces_list[
-                                                    iname].bytes_sent
-                                            + " %d" % (time.time())
-                                            ))
-                            metrics.append(("vm." +
-                                            vm[0] +
-                                            + "network.bytes_recv" +
-                                            " %d" %
-                                            (interfaces_list[iname].bytes_recv)
-                                            + " %d" % (time.time())
-                                            ))
+        interfaces_list = psutil.network_io_counters(
+            pernic=True)
+        interfaces_list_enum = enumerate(interfaces_list)
+        if ((self.beat % self.kvmNet) is 0) and vm_proc.is_running():
+            for vm in running_vms:
+                for iname_index, iname in interfaces_list_enum:
+                    if vm[0] in iname:
+                        metrics.append(("vm." +
+                                        vm[0] +
+                                        "." + "network.packages_sent" +
+                                        " %d" % interfaces_list[
+                                            iname].packets_sent
+                                        + " %d" % (time.time())
+                                        ))
+                        metrics.append(("vm." +
+                                        vm[0] +
+                                        "." + "network.packages_recv" +
+                                        " %d" % interfaces_list[
+                                            iname].packets_recv
+                                        + " %d" % (time.time())
+                                        ))
+                        metrics.append(("vm." +
+                                        vm[0] + "." + "network"
+                                        ".bytes_sent" +
+                                        " %d" % interfaces_list[
+                                                iname].bytes_sent
+                                        + " %d" % (time.time())
+                                        ))
+                        metrics.append(("vm." +
+                                        vm[0] +
+                                        + "network.bytes_recv" +
+                                        " %d" %
+                                        (interfaces_list[iname].bytes_recv)
+                                        + " %d" % (time.time())
+                                        ))
         return metrics
 
     def getMaxFrequency(self, metricCollectors=[]):
