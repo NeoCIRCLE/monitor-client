@@ -208,6 +208,7 @@ class Client:
                                         "." + "network.packages_sent" +
                                         " %d" % interfaces_list[
                                             iname].packets_sent
+                                        + "." + iname
                                         + " %d" % (time.time())
                                         ))
                         metrics.append(("vm." +
@@ -215,6 +216,7 @@ class Client:
                                         "." + "network.packages_recv" +
                                         " %d" % interfaces_list[
                                             iname].packets_recv
+                                        + "." + iname
                                         + " %d" % (time.time())
                                         ))
                         metrics.append(("vm." +
@@ -222,6 +224,7 @@ class Client:
                                         ".bytes_sent" +
                                         " %d" % interfaces_list[
                                                 iname].bytes_sent
+                                        + "." + iname
                                         + " %d" % (time.time())
                                         ))
                         metrics.append(("vm." +
@@ -229,6 +232,7 @@ class Client:
                                         ".bytes_recv" +
                                         " %d" % interfaces_list[
                                                 iname].bytes_recv
+                                        + "." + iname
                                         + " %d" % (time.time())
                                         ))
         return metrics

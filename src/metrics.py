@@ -9,7 +9,9 @@ Metrics = collections.namedtuple("Metrics", ["name", "value"])
 
 
 class Collection(object):
+
 	class Group(object):
+
 		class Metric(object):
 			name = "unknown"
 			collector_function = 0
@@ -19,14 +21,14 @@ class Collection(object):
 			@classmethod
 			def harvest(cls):
 				query = cls.collector_function.im_func(
-					**cls.collector_function_arguments)
+                                    **cls.collector_function_arguments)
 				if ((isinstance(query, list)) or (isinstance(query, dict))):
 					return Metrics(cls.name,
 					               query[cls.collector_function_result_attr])
 				elif (isinstance(query, tuple)):
 					return Metrics(cls.name,
 					               query.__getattribute__(
-						               cls.collector_function_result_attr))
+                                                           cls.collector_function_result_attr))
 				else:
 					return Metrics(cls.name, query)
 
@@ -34,18 +36,21 @@ class Collection(object):
 
 
 class std(Collection):
+
 	class cpu(Collection.Group):
+
 		class usage(Collection.Group.Metric):
 			name = "cpu.usage"
 			collector_function = ps.cpu_percent
 			collector_function_arguments = {
-			'interval': 0.0,
+                            'interval': 0.0,
 			}
 
 	class memory(Collection.Group):
+
 		class usage(Collection.Group.Metric):
 			name = "memory.usage"
-			collector_function = ps.virtmem_usage
+            collector_function = ps.virtual_memory
 			collector_function_result_attr = "percent"
 
 	class swap(Collection.Group):
