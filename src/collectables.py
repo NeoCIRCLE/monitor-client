@@ -1,4 +1,4 @@
-from metrics import *
+from metrics import std
 
 
 class collectables:
