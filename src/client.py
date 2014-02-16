@@ -185,56 +185,52 @@ class Client:
             if ((self.beat % self.kvmCPU) is 0) and vm_proc.is_running():
                 metrics.append(("vm." +
                                 vm[0] + "." + "memory.usage" +
-                                " %d" % (
+                                " %f" % (
                                     vm_proc.get_memory_percent() / 100 * vm[2])
                                 + " %d" % (time.time())
                                 ))
             if ((self.beat % self.kvmMem) is 0) and vm_proc.is_running():
                 metrics.append(("vm." +
                                 vm[0] + "." + "cpu.usage" +
-                                " %d" % (vm_proc.get_cpu_times().system +
+                                " %f" % (vm_proc.get_cpu_times().system +
                                          vm_proc.get_cpu_times().user)
                                 + " %d" % (time.time())
                                 ))
         interfaces_list = psutil.network_io_counters(
             pernic=True)
-        if ((self.beat % self.kvmNet) is 0) and vm_proc.is_running():
+        if ((self.beat % self.kvmNet) is 0):
             for vm in running_vms:
                 interfaces_list_enum = enumerate(interfaces_list)
                 for iname_index, iname in interfaces_list_enum:
                     if vm[0] in iname:
-                        metrics.append(("vm." +
-                                        vm[0] +
-                                        "." + "network.packages_sent" +
-                                        " %d" % interfaces_list[
-                                            iname].packets_sent
-                                        + "." + iname
-                                        + " %d" % (time.time())
-                                        ))
-                        metrics.append(("vm." +
-                                        vm[0] +
-                                        "." + "network.packages_recv" +
-                                        " %d" % interfaces_list[
-                                            iname].packets_recv
-                                        + "." + iname
-                                        + " %d" % (time.time())
-                                        ))
-                        metrics.append(("vm." +
-                                        vm[0] + "." + "network"
-                                        ".bytes_sent" +
-                                        " %d" % interfaces_list[
-                                                iname].bytes_sent
-                                        + "." + iname
-                                        + " %d" % (time.time())
-                                        ))
-                        metrics.append(("vm." +
-                                        vm[0] + "." + "network"
-                                        ".bytes_recv" +
-                                        " %d" % interfaces_list[
-                                                iname].bytes_recv
-                                        + "." + iname
-                                        + " %d" % (time.time())
-                                        ))
+                        metrics.append(
+                            ('vm.%(name)s.network.packets_sent_%(interface)s '
+                             '%(data)f %(time)d') % {
+                                'name': vm[0],
+                                'interface': iname,
+                                'time': time.time(),
+                                'data': interfaces_list[iname].packets_sent})
+                        metrics.append(
+                            ('vm.%(name)s.network.packets_recv_%(interface)s '
+                             '%(data)f %(time)d') % {
+                                'name': vm[0],
+                                'interface': iname,
+                                'time': time.time(),
+                                'data': interfaces_list[iname].packets_recv})
+                        metrics.append(
+                            ('vm.%(name)s.network.bytes_sent_%(interface)s '
+                             '%(data)f %(time)d') % {
+                                'name': vm[0],
+                                'interface': iname,
+                                'time': time.time(),
+                                'data': interfaces_list[iname].bytes_sent})
+                        metrics.append(
+                            ('vm.%(name)s.network.bytes_recv_%(interface)s '
+                             '%(data)f %(time)d') % {
+                                'name': vm[0],
+                                'interface': iname,
+                                'time': time.time(),
+                                'data': interfaces_list[iname].bytes_recv})
         return metrics
 
     def getMaxFrequency(self, metricCollectors=[]):
