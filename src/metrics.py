@@ -37,11 +37,18 @@ class Collection(object):
 class std(Collection):
 
     class cpu(Collection.Group):
-
         class usage(Collection.Group.Metric):
             name = "cpu.usage"
             collector_function = ps.cpu_percent
             collector_function_arguments = {'interval': 0.0}
+
+    class times(Collection.Group.Metric):
+            name = "cpu.times"
+
+            @classmethod
+            def harvest(cls):
+                return Metrics(cls.name,
+                               ps.cpu_times().user + ps.cpu_times().system)
 
     class memory(Collection.Group):
         class usage(Collection.Group.Metric):
@@ -65,12 +72,12 @@ class std(Collection):
 
     class network(Collection.Group):
         class packages_sent(Collection.Group.Metric):
-            name = "network.packages_sent"
+            name = "network.packets_sent"
             collector_function = ps.network_io_counters
             collector_function_result_attr = "packets_sent"
 
         class packages_received(Collection.Group.Metric):
-            name = "network.packages_received"
+            name = "network.packets_recv"
             collector_function = ps.network_io_counters
             collector_function_result_attr = "packets_recv"
 

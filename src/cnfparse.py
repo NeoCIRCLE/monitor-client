@@ -9,6 +9,7 @@ def importConf(path_to_file):
         metrics = {}
         params["debugMode"] = config.get("Client", "Debug")
         metrics["cpu.usage"] = int(config.get("Metrics", "cpuUsage"))
+        metrics["cpu.times"] = int(config.get("Metrics", "cpuTimes"))
         metrics["memory.usage"] = int(config.get("Metrics", "memoryUsage"))
         metrics["user.count"] = int(config.get("Metrics", "userCount"))
         metrics["swap.usage"] = int(config.get("Metrics", "swapUsage"))

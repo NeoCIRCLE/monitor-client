@@ -176,26 +176,21 @@ class Client:
                 except IndexError:
                     pass
         if ((self.beat % 30) is 0):
-            metrics.append((self.name + "." + "vmcount" +
-                            " %d" % len(running_vms)
-                            + " %d" % (time.time())
-                            ))
+            metrics.append("%s.vmcount %d %d"
+                           % (self.name, len(running_vms), time.time()))
         for vm in running_vms:
             vm_proc = psutil.Process(vm[1])
             if ((self.beat % self.kvmCPU) is 0) and vm_proc.is_running():
-                metrics.append(("vm." +
-                                vm[0] + "." + "memory.usage" +
-                                " %f" % (
-                                    vm_proc.get_memory_percent() / 100 * vm[2])
-                                + " %d" % (time.time())
-                                ))
+                metrics.append("vm.%s.memory.usage %f %d"
+                               % (vm[0],
+                                  vm_proc.get_memory_percent() / 100 * vm[2]),
+                               time.time())
             if ((self.beat % self.kvmMem) is 0) and vm_proc.is_running():
-                metrics.append(("vm." +
-                                vm[0] + "." + "cpu.usage" +
-                                " %f" % (vm_proc.get_cpu_times().system +
-                                         vm_proc.get_cpu_times().user)
-                                + " %d" % (time.time())
-                                ))
+                systemtime = vm_proc.get_cpu_times().system
+                usertime = vm_proc.get_cpu_times().user
+                sumCpu = systemtime + usertime
+                metrics.append("vm.%s.cpu.usage %f %d"
+                               % (sumCpu, time.time()))
         interfaces_list = psutil.network_io_counters(
             pernic=True)
         if ((self.beat % self.kvmNet) is 0):
