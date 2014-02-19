@@ -4,6 +4,7 @@ from metrics import std
 class collectables:
     __collectables = {
         std.cpu.usage.name: [std.cpu.usage],
+        std.cpu.times.name: [std.cpu.times],
         std.memory.usage.name: [std.memory.usage],
         std.swap.usage.name: [std.swap.usage],
         std.user.count.name: [std.user.count],

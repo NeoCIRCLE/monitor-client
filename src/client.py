@@ -180,17 +180,16 @@ class Client:
                            % (self.name, len(running_vms), time.time()))
         for vm in running_vms:
             vm_proc = psutil.Process(vm[1])
-            if ((self.beat % self.kvmCPU) is 0) and vm_proc.is_running():
+            if (((self.beat % self.kvmCPU) is 0) and vm_proc.is_running()):
+                mem_perc = vm_proc.get_memory_percent() / 100 * vm[2]
                 metrics.append("vm.%s.memory.usage %f %d"
-                               % (vm[0],
-                                  vm_proc.get_memory_percent() / 100 * vm[2]),
-                               time.time())
-            if ((self.beat % self.kvmMem) is 0) and vm_proc.is_running():
+                               % (vm[0], mem_perc, time.time()))
+            if (((self.beat % self.kvmMem) is 0) and vm_proc.is_running()):
                 systemtime = vm_proc.get_cpu_times().system
                 usertime = vm_proc.get_cpu_times().user
                 sumCpu = systemtime + usertime
                 metrics.append("vm.%s.cpu.usage %f %d"
-                               % (sumCpu, time.time()))
+                               % (vm[0], sumCpu, time.time()))
         interfaces_list = psutil.network_io_counters(
             pernic=True)
         if ((self.beat % self.kvmNet) is 0):
