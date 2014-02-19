@@ -42,7 +42,7 @@ class std(Collection):
             collector_function = ps.cpu_percent
             collector_function_arguments = {'interval': 0.0}
 
-    class times(Collection.Group.Metric):
+        class times(Collection.Group.Metric):
             name = "cpu.times"
 
             @classmethod
