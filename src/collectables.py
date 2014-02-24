@@ -18,20 +18,19 @@ class collectables:
     }
 
     @staticmethod
-    def listKeys():
+    def list_keys():
         return list(collectables.__collectables.keys())
 
     @staticmethod
-    def listMetricsToKey(key):
+    def list_metrics_to_key(key):
         return collectables.__collectables[key]
 
     @staticmethod
-    def listMetricsNameToKey(key):
+    def list_metrics_name_to_key(key):
         return [x.name for x in collectables.__collectables[key]]
 
     @staticmethod
     def provide(requests=[]):
-        #valid_keys = collectables.listKeys()
         reqs = []
         for requests, value in requests.items():
             if value > 0:
@@ -44,4 +43,4 @@ class collectables:
 
     @staticmethod
     def provideAll():
-        return collectables.provide(collectables.listKeys())
+        return collectables.provide(collectables.list_keys())

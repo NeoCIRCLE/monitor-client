@@ -13,6 +13,15 @@ logging.basicConfig()
 
 class Client:
 
+    env_config = {
+        "host": "GRAPHITE_HOST",
+        "port": "GRAPHITE_PORT",
+        "amqp_user": "GRAPHITE_AMQP_USER",
+        "amqp_pass": "GRAPHITE_AMQP_PASSWORD",
+        "amqp_queue": "GRAPHITE_AMQP_QUEUE",
+        "amqp_vhost": "GRAPHITE_AMQP_VHOST",
+    }
+
     def __init__(self, config):
         """
         Constructor of the client class that is responsible for handling the
@@ -29,40 +38,42 @@ class Client:
         """
         hostname = socket.gethostname().split('.')
         hostname.reverse()
-        self.name = "circle." + ".".join(hostname)
-        if os.getenv("GRAPHITE_SERVER_ADDRESS") is "":
-            print("GRAPHITE_SERVER_ADDRESS cannot be found in environmental "
-                  "variables"
+        separator = '.'
+        self.name = 'circle.%(host)s' % {'host': separator.join(hostname)}
+        self.server_address = str(os.getenv(self.env_config['host']))
+        self.server_port = int(os.getenv(self.env_config['port']))
+        self.amqp_user = str(os.getenv(self.env_config['amqp_user']))
+        self.amqp_pass = str(os.getenv(self.env_config['amqp_pass']))
+        self.amqp_queue = str(os.getenv(self.env_config['amqp_queue']))
+        self.amqp_vhost = str(os.getenv(self.env_config['amqp_vhost']))
+        if self.server_address is "":
+            print(('%(host)s cannot be found in environmental variables.')
+                  % {'host': self.env_config['host']}
                   )
             self.valid = False
             return
-        if os.getenv("GRAPHITE_SERVER_PORT") is "":
-            print("GRAPHITE_SERVER_PORT cannot be found in environmental "
-                  "variables. (AMQP standard is: 5672"
+        if self.server_port is "":
+            print(('%(port)s cannot be found in environmental variables. ')
+                  % {'port': self.env_config['port']}
                   )
             self.valid = False
             return
-        if os.getenv("GRAPHITE_AMQP_USER") is "" or os.getenv(
-                "GRAPHITE_AMQP_PASSWORD") is "":
-            print("GRAPHITE_AMQP_USER or GRAPHITE_AMQP_PASSWORD cannot be "
-                  "found in environmental variables. (AMQP standard is: "
-                  "guest-guest)"
+        if self.amqp_user is "" or self.amqp_pass is "":
+            print(('%(user)s or %(pass)s cannot be '
+                  'found in environmental variables.')
+                  % {'user': self.env_config['amqp_user'],
+                     'pass': self.env_config['amqp_pass']}
                   )
             self.valid = False
             return
-        if os.getenv("GRAPHITE_AMQP_QUEUE") is "" or os.getenv(
-                "GRAPHITE_AMQP_VHOST") is "":
-            print("GRAPHITE_AMQP_QUEUE or GRAPHITE_AMQP_VHOST cannot be "
-                  "found in environmental variables."
+        if self.amqp_queue is "" or self.amqp_vhost is "":
+            print(('%(queue)s or %(vhost)s cannot be '
+                  'found in environmental variables.')
+                  % {'queue': self.env_config['amqp_queue'],
+                     'vhost': self.env_config['amqp_vhost']}
                   )
             self.valid = False
             return
-        self.server_address = str(os.getenv("GRAPHITE_SERVER_ADDRESS"))
-        self.server_port = int(os.getenv("GRAPHITE_SERVER_PORT"))
-        self.amqp_user = str(os.getenv("GRAPHITE_AMQP_USER"))
-        self.amqp_pass = str(os.getenv("GRAPHITE_AMQP_PASSWORD"))
-        self.amqp_queue = str(os.getenv("GRAPHITE_AMQP_QUEUE"))
-        self.amqp_vhost = str(os.getenv("GRAPHITE_AMQP_VHOST"))
         self.debugMode = config["debugMode"]
         self.kvmCPU = int(config["kvmCpuUsage"])
         self.kvmMem = int(config["kvmMemoryUsage"])
@@ -70,7 +81,7 @@ class Client:
         self.beat = 1
         self.valid = True
 
-    def __connect(self):
+    def connect(self):
         """
         This method creates the connection to the queue of the graphite
         server using the environmental variables given in the constructor.
@@ -86,17 +97,17 @@ class Client:
             self.channel = self.connection.channel()
             return True
         except RuntimeError:
-            print ("[ERROR] Cannot connect to the server. "
-                   "Parameters could be wrong."
+            print ('[ERROR] Cannot connect to the server. '
+                   'Parameters could be wrong.'
                    )
             return False
         except:
-            print ("[ERROR] Cannot connect to the server. There is no one "
-                   "listening on the other side."
+            print ('[ERROR] Cannot connect to the server. There is no one '
+                   'listening on the other side.'
                    )
             return False
 
-    def __disconnect(self):
+    def disconnect(self):
         """
         Break up the connection to the graphite server. If something went
         wrong while disconnecting it simply cut the connection up.
@@ -105,11 +116,11 @@ class Client:
             self.channel.close()
             self.connection.close()
         except RuntimeError:
-            print("[ERROR] An error has occured while disconnecting from the "
-                  "server."
+            print('[ERROR] An error has occured '
+                  'while disconnecting from the server.'
                   )
 
-    def __send(self, message):
+    def send(self, message):
         """
         Send the message given in the parameters given in the message
         parameter. This function expects that the graphite server want the
@@ -121,12 +132,12 @@ class Client:
                                        routing_key='', body="\n".join(message))
             return True
         except:
-            print("[ERROR] An error has occured while sending metrics to the "
-                  "server."
+            print('[ERROR] An error has occured '
+                  'while sending metrics to the server.'
                   )
             return False
 
-    def __collectFromNode(self, metricCollectors):
+    def collect_node(self, metricCollectors):
         """
         It harvests the given metrics in the metricCollectors list. This list
         should be provided by the collectables modul. It is important that
@@ -134,15 +145,18 @@ class Client:
         """
         metrics = []
         for collector in metricCollectors:
-            if (self.beat % collector[1]) is 0:
-                stat = collector[0]()
-                metrics.append((self.name + "." +
-                                stat.name + " %d" % (stat.value)
-                                + " %d" % (time.time())
-                                ))
+            collector_function = collector[0]
+            phase = collector[1]
+            if (self.beat % phase) is 0:
+                stat = collector_function()
+                metrics.append(('%(hostname)s.%(name)s %(value)f %(time)d') %
+                               {'hostname': self.name,
+                                'name': stat.name,
+                                'value': stat.value,
+                                'time': time.time()})
         return metrics
 
-    def __collectFromVMs(self):
+    def collect_vms(self):
         """
         This method is used for fetching the kvm processes running on the
         node and using the cmdline parameters calculates different types of
@@ -154,80 +168,80 @@ class Client:
         for entry in procList:
             try:
                 entry_name = entry.name
-            except psutil._error.NoSuchProcess:
-                entry_name = ""
-            if entry_name in "kvm":
-                cmdLine = entry.as_dict()["cmdline"]
-                search = [cmd_param_index for cmd_param_index, cmd_param in
-                          enumerate(cmdLine)
-                          if cmd_param == "-name"]
-                if not entry.is_running():
-                    break
-                memory = [cmd_param_index for cmd_param_index, cmd_param in
-                          enumerate(cmdLine)
-                          if cmd_param == "-m"]
-                if not entry.is_running():
-                    break
-                try:
-                    running_vms.append([cmdLine[search[0] + 1],
-                                        entry.pid,
-                                        int(entry.as_dict()["cmdline"][
-                                            memory[0] + 1])])
-                except IndexError:
-                    pass
-        if ((self.beat % 30) is 0):
-            metrics.append("%s.vmcount %d %d"
-                           % (self.name, len(running_vms), time.time()))
-        for vm in running_vms:
-            vm_proc = psutil.Process(vm[1])
-            if (((self.beat % self.kvmCPU) is 0) and vm_proc.is_running()):
-                mem_perc = vm_proc.get_memory_percent() / 100 * vm[2]
-                metrics.append("vm.%s.memory.usage %f %d"
-                               % (vm[0], mem_perc, time.time()))
-            if (((self.beat % self.kvmMem) is 0) and vm_proc.is_running()):
-                systemtime = vm_proc.get_cpu_times().system
-                usertime = vm_proc.get_cpu_times().user
-                sumCpu = systemtime + usertime
-                metrics.append("vm.%s.cpu.usage %f %d"
-                               % (vm[0], sumCpu, time.time()))
-        interfaces_list = psutil.network_io_counters(
-            pernic=True)
-        if ((self.beat % self.kvmNet) is 0):
-            for vm in running_vms:
-                interfaces_list_enum = enumerate(interfaces_list)
-                for iname_index, iname in interfaces_list_enum:
-                    if vm[0] in iname:
-                        metrics.append(
-                            ('vm.%(name)s.network.packets_sent_%(interface)s '
-                             '%(data)f %(time)d') % {
-                                'name': vm[0],
-                                'interface': iname,
-                                'time': time.time(),
-                                'data': interfaces_list[iname].packets_sent})
-                        metrics.append(
-                            ('vm.%(name)s.network.packets_recv_%(interface)s '
-                             '%(data)f %(time)d') % {
-                                'name': vm[0],
-                                'interface': iname,
-                                'time': time.time(),
-                                'data': interfaces_list[iname].packets_recv})
-                        metrics.append(
-                            ('vm.%(name)s.network.bytes_sent_%(interface)s '
-                             '%(data)f %(time)d') % {
-                                'name': vm[0],
-                                'interface': iname,
-                                'time': time.time(),
-                                'data': interfaces_list[iname].bytes_sent})
-                        metrics.append(
-                            ('vm.%(name)s.network.bytes_recv_%(interface)s '
-                             '%(data)f %(time)d') % {
-                                'name': vm[0],
-                                'interface': iname,
-                                'time': time.time(),
-                                'data': interfaces_list[iname].bytes_recv})
+                if entry_name in "kvm":
+                    cmdLine = entry.as_dict()["cmdline"]
+                    search = [cmd_param_index for cmd_param_index, cmd_param in
+                              enumerate(cmdLine)
+                              if cmd_param == "-name"]
+                    if not entry.is_running():
+                        break
+                    memory = [cmd_param_index for cmd_param_index, cmd_param in
+                              enumerate(cmdLine)
+                              if cmd_param == "-m"]
+                    if not entry.is_running():
+                        break
+                    try:
+                        running_vms.append([cmdLine[search[0] + 1],
+                                            entry.pid,
+                                            int(entry.as_dict()["cmdline"][
+                                                memory[0] + 1])])
+                    except IndexError:
+                        pass
+                if ((self.beat % 30) is 0):
+                    metrics.append("%s.vmcount %d %d"
+                                   % (self.name, len(running_vms), time.time()))
+                for vm in running_vms:
+                    vm_proc = psutil.Process(vm[1])
+                    if (((self.beat % self.kvmCPU) is 0) and vm_proc.is_running()):
+                        mem_perc = vm_proc.get_memory_percent() / 100 * vm[2]
+                        metrics.append("vm.%s.memory.usage %f %d"
+                                       % (vm[0], mem_perc, time.time()))
+                    if (((self.beat % self.kvmMem) is 0) and vm_proc.is_running()):
+                        systemtime = vm_proc.get_cpu_times().system
+                        usertime = vm_proc.get_cpu_times().user
+                        sumCpu = systemtime + usertime
+                        metrics.append("vm.%s.cpu.usage %f %d"
+                                       % (vm[0], sumCpu, time.time()))
+                interfaces_list = psutil.network_io_counters(
+                    pernic=True)
+                if ((self.beat % self.kvmNet) is 0):
+                    for vm in running_vms:
+                        interfaces_list_enum = enumerate(interfaces_list)
+                        for iname_index, iname in interfaces_list_enum:
+                            if vm[0] in iname:
+                                metrics.append(
+                                    ('vm.%(name)s.network.packets_sent_%(interface)s '
+                                     '%(data)f %(time)d') %
+                                    {'name': vm[0],
+                                     'interface': iname,
+                                     'time': time.time(),
+                                     'data': interfaces_list[iname].packets_sent})
+                                metrics.append(
+                                    ('vm.%(name)s.network.packets_recv_%(interface)s '
+                                     '%(data)f %(time)d') %
+                                    {'name': vm[0],
+                                     'interface': iname,
+                                     'time': time.time(),
+                                     'data': interfaces_list[iname].packets_recv})
+                                metrics.append(
+                                    ('vm.%(name)s.network.bytes_sent_%(interface)s '
+                                     '%(data)f %(time)d') %
+                                    {'name': vm[0],
+                                     'interface': iname,
+                                     'time': time.time(),
+                                     'data': interfaces_list[iname].bytes_sent})
+                                metrics.append(
+                                    ('vm.%(name)s.network.bytes_recv_%(interface)s '
+                                     '%(data)f %(time)d') %
+                                    {'name': vm[0],
+                                     'interface': iname,
+                                     'time': time.time(),
+                                     'data': interfaces_list[iname].bytes_recv})
+            except psutil.NoSuchProcess:
+                print('[ERROR LOG] Process lost.')
         return metrics
 
-    def getMaxFrequency(self, metricCollectors=[]):
+    def get_frequency(self, metricCollectors=[]):
         """
         """
         items = metricCollectors + [["kvmCpuUsage", self.kvmMem], [
@@ -238,7 +252,7 @@ class Client:
                 max = item[1]
         return max
 
-    def startReporting(self, metricCollectors=[]):
+    def run(self, metricCollectors=[]):
         """
         Call this method to start reporting to the server, it needs the
         metricCollectors parameter that should be provided by the collectables
@@ -247,20 +261,20 @@ class Client:
         if self.valid is False:
             print("[ERROR] The client cannot be started.")
             raise RuntimeError
-        if self.__connect() is False:
+        if self.connect() is False:
+            hostdata = self.server_address + ':' + self.server_port
             print("[ERROR] An error has occured while connecting to the "
-                  "server on %s."
-                  % (self.server_address + ":" + str(self.server_port)))
+                  "server on %(host)s."
+                  % {'host': hostdata})
         else:
-            print("[SUCCESS] Connection established to %s on port %s. \
-                  Clientname: %s"
-                  % (self.server_address, self.server_port,
-                     self.name))
+            print('[SUCCESS] Connection established to %(host)s:%(port)s.'
+                  % {'host': self.server_address,
+                     'port': self.server_port})
         try:
-            maxFrequency = self.getMaxFrequency(metricCollectors)
+            maxFrequency = self.get_frequency(metricCollectors)
             while True:
-                nodeMetrics = self.__collectFromNode(metricCollectors)
-                vmMetrics = self.__collectFromVMs()
+                nodeMetrics = self.collect_node(metricCollectors)
+                vmMetrics = self.collect_vms()
                 metrics = nodeMetrics + vmMetrics
                 if self.debugMode == "True":
                     print(metrics)
@@ -274,4 +288,4 @@ class Client:
         except KeyboardInterrupt:
             print("[x] Reporting has stopped by the user. Exiting...")
         finally:
-            self.__disconnect()
+            self.disconnect()
