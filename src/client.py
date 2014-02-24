@@ -46,40 +46,47 @@ class Client:
         self.amqp_pass = str(os.getenv(self.env_config['amqp_pass']))
         self.amqp_queue = str(os.getenv(self.env_config['amqp_queue']))
         self.amqp_vhost = str(os.getenv(self.env_config['amqp_vhost']))
-        if self.server_address is "":
+        host_check = self.__check_envvar(self.server_address)
+        port_check = self.__check_envvar(self.server_port)
+        amqp_pass_check = self.__check_envvar(self.amqp_pass)
+        amqp_user_check = self.__check_envvar(self.amqp_user)
+        amqp_queue_check = self.__check_envvar(self.amqp_queue)
+        amqp_vhost_check = self.__check_envvar(self.amqp_vhost)
+        if host_check:
             print(('%(host)s cannot be found in environmental variables.')
                   % {'host': self.env_config['host']}
                   )
-            self.valid = False
-            return
-        if self.server_port is "":
+            raise RuntimeError
+        if port_check:
             print(('%(port)s cannot be found in environmental variables. ')
                   % {'port': self.env_config['port']}
                   )
-            self.valid = False
-            return
-        if self.amqp_user is "" or self.amqp_pass is "":
+            raise RuntimeError
+        if amqp_user_check or amqp_pass_check:
             print(('%(user)s or %(pass)s cannot be '
                   'found in environmental variables.')
                   % {'user': self.env_config['amqp_user'],
                      'pass': self.env_config['amqp_pass']}
                   )
-            self.valid = False
-            return
-        if self.amqp_queue is "" or self.amqp_vhost is "":
+            raise RuntimeError
+        amqp_pass_check = self.__check_envvar(self.amqp_pass)
+        amqp_user_check = self.__check_envvar(self.amqp_user)
+        if amqp_vhost_check or amqp_queue_check:
             print(('%(queue)s or %(vhost)s cannot be '
                   'found in environmental variables.')
                   % {'queue': self.env_config['amqp_queue'],
                      'vhost': self.env_config['amqp_vhost']}
                   )
-            self.valid = False
-            return
+            raise RuntimeError
         self.debugMode = config["debugMode"]
         self.kvmCPU = int(config["kvmCpuUsage"])
         self.kvmMem = int(config["kvmMemoryUsage"])
         self.kvmNet = int(config["kvmNetworkUsage"])
         self.beat = 1
         self.valid = True
+
+    def __check_envvar(variable):
+        return variable == "None" or variable == ""
 
     def connect(self):
         """
@@ -258,14 +265,12 @@ class Client:
         metricCollectors parameter that should be provided by the collectables
         modul to work properly.
         """
-        if self.valid is False:
-            print("[ERROR] The client cannot be started.")
-            raise RuntimeError
         if self.connect() is False:
-            hostdata = self.server_address + ':' + self.server_port
+            hostdata = self.server_address + ':' + str(self.server_port)
             print("[ERROR] An error has occured while connecting to the "
                   "server on %(host)s."
                   % {'host': hostdata})
+            return
         else:
             print('[SUCCESS] Connection established to %(host)s:%(port)s.'
                   % {'host': self.server_address,
