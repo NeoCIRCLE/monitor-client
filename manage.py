@@ -6,7 +6,7 @@ from src.collectables import collectables
 
 def main():
     if len(sys.argv) < 2:
-        print("usage: manage.py run [options]")
+        print("usage: manage.py run")
     if len(sys.argv) is not 2 and sys.argv[1] is not "run":
         print("[ERROR] Command cannot be parsed. Exiting...")
         return

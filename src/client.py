@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from datetime import datetime
 import time
 import socket
 import pika
@@ -46,12 +47,12 @@ class Client:
         self.amqp_pass = str(os.getenv(self.env_config['amqp_pass']))
         self.amqp_queue = str(os.getenv(self.env_config['amqp_queue']))
         self.amqp_vhost = str(os.getenv(self.env_config['amqp_vhost']))
-        host_check = self.__check_envvar(self.server_address)
-        port_check = self.__check_envvar(self.server_port)
-        amqp_pass_check = self.__check_envvar(self.amqp_pass)
-        amqp_user_check = self.__check_envvar(self.amqp_user)
-        amqp_queue_check = self.__check_envvar(self.amqp_queue)
-        amqp_vhost_check = self.__check_envvar(self.amqp_vhost)
+        host_check = Client.__check_envvar(self.server_address)
+        port_check = Client.__check_envvar(self.server_port)
+        amqp_pass_check = Client.__check_envvar(self.amqp_pass)
+        amqp_user_check = Client.__check_envvar(self.amqp_user)
+        amqp_queue_check = Client.__check_envvar(self.amqp_queue)
+        amqp_vhost_check = Client.__check_envvar(self.amqp_vhost)
         if host_check:
             print(('%(host)s cannot be found in environmental variables.')
                   % {'host': self.env_config['host']}
@@ -69,8 +70,8 @@ class Client:
                      'pass': self.env_config['amqp_pass']}
                   )
             raise RuntimeError
-        amqp_pass_check = self.__check_envvar(self.amqp_pass)
-        amqp_user_check = self.__check_envvar(self.amqp_user)
+        amqp_pass_check = Client.__check_envvar(self.amqp_pass)
+        amqp_user_check = Client.__check_envvar(self.amqp_user)
         if amqp_vhost_check or amqp_queue_check:
             print(('%(queue)s or %(vhost)s cannot be '
                   'found in environmental variables.')
@@ -85,7 +86,8 @@ class Client:
         self.beat = 1
         self.valid = True
 
-    def __check_envvar(variable):
+    @classmethod
+    def __check_envvar(cls, variable):
         return variable == "None" or variable == ""
 
     def connect(self):
@@ -172,6 +174,11 @@ class Client:
         metrics = []
         running_vms = []
         procList = psutil.get_process_list()
+        beats = {
+            'mem': self.beat % self.kvmMem,
+            'cpu': self.beat % self.kvmCPU,
+            'net': self.beat % self.kvmNet
+        }
         for entry in procList:
             try:
                 entry_name = entry.name
@@ -194,24 +201,20 @@ class Client:
                                                 memory[0] + 1])])
                     except IndexError:
                         pass
-                if ((self.beat % 30) is 0):
-                    metrics.append("%s.vmcount %d %d"
-                                   % (self.name, len(running_vms), time.time()))
                 for vm in running_vms:
                     vm_proc = psutil.Process(vm[1])
-                    if (((self.beat % self.kvmCPU) is 0) and vm_proc.is_running()):
+                    if ((beats['cpu'] is 0) and vm_proc.is_running()):
                         mem_perc = vm_proc.get_memory_percent() / 100 * vm[2]
                         metrics.append("vm.%s.memory.usage %f %d"
                                        % (vm[0], mem_perc, time.time()))
-                    if (((self.beat % self.kvmMem) is 0) and vm_proc.is_running()):
+                    if ((beats['mem'] is 0) and vm_proc.is_running()):
                         systemtime = vm_proc.get_cpu_times().system
                         usertime = vm_proc.get_cpu_times().user
                         sumCpu = systemtime + usertime
                         metrics.append("vm.%s.cpu.usage %f %d"
                                        % (vm[0], sumCpu, time.time()))
-                interfaces_list = psutil.network_io_counters(
-                    pernic=True)
-                if ((self.beat % self.kvmNet) is 0):
+                interfaces_list = psutil.network_io_counters(pernic=True)
+                if beats['net'] is 0:
                     for vm in running_vms:
                         interfaces_list_enum = enumerate(interfaces_list)
                         for iname_index, iname in interfaces_list_enum:
@@ -246,6 +249,12 @@ class Client:
                                      'data': interfaces_list[iname].bytes_recv})
             except psutil.NoSuchProcess:
                 print('[ERROR LOG] Process lost.')
+        if (self.beat % 30) is 0:
+            metrics.append(
+                ('%(host)s.vmcount %(data)d %(time)d') %
+                {'host': self.name,
+                 'data': len(running_vms),
+                 'time': time.time()})
         return metrics
 
     def get_frequency(self, metricCollectors=[]):
@@ -258,6 +267,16 @@ class Client:
             if max < item[1]:
                 max = item[1]
         return max
+
+    @classmethod
+    def print_metrics(cls, metrics):
+        for metric in metrics:
+            parts = metric.split(' ')
+            parts[2] = datetime.fromtimestamp(int(parts[2])).strftime('%Y-%m-%d %H:%M:%S')
+            print('********************************************')
+            print('[M] %(title)s' % {'title': parts[0]})
+            print(' -> data: %(data)s' % {'data': parts[1]})
+            print(' -> time: %(time)s' % {'time': parts[2]})
 
     def run(self, metricCollectors=[]):
         """
@@ -282,9 +301,9 @@ class Client:
                 vmMetrics = self.collect_vms()
                 metrics = nodeMetrics + vmMetrics
                 if self.debugMode == "True":
-                    print(metrics)
+                    Client.print_metrics(metrics)
                 if len(metrics) is not 0:
-                    if self.__send(metrics) is False:
+                    if self.send(metrics) is False:
                         raise RuntimeError
                 time.sleep(1)
                 self.beat = self.beat + 1
