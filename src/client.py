@@ -1,11 +1,9 @@
 #!/usr/bin/python
 
-from datetime import datetime
 from itertools import islice
 from socket import gethostname
 import argparse
 import logging
-import operator
 import os
 import pika
 import psutil
@@ -25,7 +23,7 @@ class Client:
         "amqp_vhost": "GRAPHITE_AMQP_VHOST",
     }
 
-    def __init__(self, config):
+    def __init__(self):
         """
         Constructor of the client class that is responsible for handling the
         communication between the graphite server and the data source. In
@@ -46,11 +44,6 @@ class Client:
                 setattr(self, var, value)
             else:
                 raise RuntimeError('%s environment variable missing' % env_var)
-        self.debugMode = config["debugMode"]
-        self.kvmCPU = int(config["kvmCpuUsage"])
-        self.kvmMem = int(config["kvmMemoryUsage"])
-        self.kvmNet = int(config["kvmNetworkUsage"])
-        self.beat = 0
 
     def connect(self):
         """
@@ -86,7 +79,8 @@ class Client:
             self.channel.close()
             self.connection.close()
         except RuntimeError as e:
-            logger.error('An error has occured while disconnecting. %s', unicode(e))
+            logger.error('An error has occured while disconnecting. %s',
+                         unicode(e))
             raise
 
     def send(self, message):
@@ -105,24 +99,39 @@ class Client:
                          len(body))
             raise
 
-    def collect_node(self, metricCollectors):
+    def collect_node(self):
         """
         It harvests the given metrics in the metricCollectors list. This list
         should be provided by the collectables modul. It is important that
         only the information collected from the node is provided here.
         """
-        metrics = []
-        for collector in metricCollectors:
-            collector_function = collector[0]
-            phase = collector[1]
-            if self.beat % phase == 0:
-                stat = collector_function()
-                metrics.append(('%(hostname)s.%(name)s %(value)f %(time)d') %
-                               {'hostname': self.name,
-                                'name': stat.name,
-                                'value': stat.value,
-                                'time': time.time()})
-        return metrics
+
+        now = time.time()
+        metrics = {
+            'cpu.usage': psutil.cpu_percent(interval=0.0),
+            'cpu.times': psutil.cpu_times().user + psutil.cpu_times().system,
+            'memory.usage': psutil.virtual_memory().percent,
+            'swap.usage': psutil.swap_memory().percent,
+            'user.count': len(psutil.get_users()),
+            'system.boot_time': psutil.get_boot_time()
+        }
+
+        for k, v in psutil.disk_io_counters().__dict__.items():
+            metrics['disk.%s' % k] = v
+
+        interfaces = psutil.network_io_counters(pernic=True)
+        for interface, data in interfaces.iteritems():
+            if not interface.startswith('cloud-'):
+                for metric in ('packets_sent', 'packets_recv',
+                               'bytes_sent', 'bytes_recv'):
+                    metrics['network.%s-%s' %
+                            (metric, interface)] = getattr(data, metric)
+
+        return ['%(host)s.%(name)s %(val)f %(time)d' % {'host': self.name,
+                                                        'name': name,
+                                                        'val': value,
+                                                        'time': now}
+                for name, value in metrics.iteritems()]
 
     def collect_vms(self):
         """
@@ -133,72 +142,59 @@ class Client:
         metrics = []
         now = time.time()
         running_vms = []
-        beats = {
-            'mem': self.beat % self.kvmMem == 0,
-            'cpu': self.beat % self.kvmCPU == 0,
-            'net': self.beat % self.kvmNet == 0
-        }
 
-        if beats['cpu'] or beats['mem']:
-            for entry in psutil.get_process_list():
-                try:
-                    if entry.name == 'kvm':
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument('-name')
-                        parser.add_argument('--memory-size', '-m ', type=int)
-                        args, unknown = parser.parse_known_args(entry.cmdline[1:])
+        for entry in psutil.get_process_list():
+            try:
+                if entry.name == 'kvm':
+                    parser = argparse.ArgumentParser()
+                    parser.add_argument('-name')
+                    parser.add_argument('--memory-size', '-m ', type=int)
+                    args, unknown = parser.parse_known_args(
+                        entry.cmdline[1:])
 
-                        process = psutil.Process(entry.pid)
+                    process = psutil.Process(entry.pid)
 
-                        mem_perc = process.get_memory_percent() / 100 * args.memory_size
-                        metrics.append('vm.%(name)s.memory.usage %(value)f '
-                                       '%(time)d' % {'name': args.name,
-                                                     'value': mem_perc,
-                                                     'time': now})
-                        user_time, system_time = process.get_cpu_times()
-                        sum_time = system_time + user_time
-                        metrics.append('vm.%(name)s.cpu.usage %(value)f '
-                                       '%(time)d' % {'name': args.name,
-                                                     'value': sum_time,
-                                                     'time': now})
-                        running_vms.append(args.name)
-                except psutil.NoSuchProcess:
-                    logger.warning('Process %d lost.', entry.pid)
+                    mem_perc = (process.get_memory_percent()
+                                / 100 * args.memory_size)
+                    metrics.append('vm.%(name)s.memory.usage %(value)f '
+                                   '%(time)d' % {'name': args.name,
+                                                 'value': mem_perc,
+                                                 'time': now})
+                    user_time, system_time = process.get_cpu_times()
+                    sum_time = system_time + user_time
+                    metrics.append('vm.%(name)s.cpu.usage %(value)f '
+                                   '%(time)d' % {'name': args.name,
+                                                 'value': sum_time,
+                                                 'time': now})
+                    running_vms.append(args.name)
+            except psutil.NoSuchProcess:
+                logger.warning('Process %d lost.', entry.pid)
 
-        interfaces_list = psutil.network_io_counters(pernic=True)
-        if beats['net']:
-            for interface, data in interfaces_list.iteritems():
-                try:
-                    vm, vlan = interface.rsplit('-', 1)
-                except ValueError:
-                    continue
-                if vm in running_vms:
-                    for metric in ('packets_sent', 'packets_recv',
-                                   'bytes_sent', 'bytes_recv'):
-                        metrics.append(
-                            'vm.%(name)s.network.%(metric)s-'
-                            '%(interface)s %(data)f %(time)d' %
-                            {'name': vm,
-                             'interface': vlan,
-                             'metric': metric,
-                             'time': now,
-                             'data': getattr(data, metric)})
+        interfaces = psutil.network_io_counters(pernic=True)
+        for interface, data in interfaces.iteritems():
+            try:
+                vm, vlan = interface.rsplit('-', 1)
+            except ValueError:
+                continue
+            if vm in running_vms:
+                for metric in ('packets_sent', 'packets_recv',
+                               'bytes_sent', 'bytes_recv'):
+                    metrics.append(
+                        'vm.%(name)s.network.%(metric)s-'
+                        '%(interface)s %(data)f %(time)d' %
+                        {'name': vm,
+                            'interface': vlan,
+                            'metric': metric,
+                            'time': now,
+                            'data': getattr(data, metric)})
 
-        if (self.beat % 30) == 0:
-            metrics.append(
-                ('%(host)s.vmcount %(data)d %(time)d') %
-                {'host': self.name,
-                 'data': len(running_vms),
-                 'time': time.time()})
+        metrics.append(
+            '%(host)s.vmcount %(data)d %(time)d' % {
+                'host': self.name,
+                'data': len(running_vms),
+                'time': time.time()})
+
         return metrics
-
-    def get_frequency(self, metricCollectors=[]):
-        """
-        """
-        items = metricCollectors + [["kvmCpuUsage", self.kvmMem], [
-            "kvmMemoryUsage", self.kvmCPU], ["kvmNetworkUsage", self.kvmNet]]
-        freqs = set([i[1] for i in items if i[1]>0])
-        return reduce(operator.mul, freqs, 1)
 
     @staticmethod
     def _chunker(seq, size):
@@ -207,7 +203,7 @@ class Client:
         for pos in xrange(0, len(seq), size):
             yield islice(seq, pos, pos + size)
 
-    def run(self, metricCollectors=[]):
+    def run(self):
         """
         Call this method to start reporting to the server, it needs the
         metricCollectors parameter that should be provided by the collectables
@@ -215,22 +211,13 @@ class Client:
         """
         self.connect()
         try:
-            maxFrequency = self.get_frequency(metricCollectors)
             while True:
-                nodeMetrics = self.collect_node(metricCollectors)
-                vmMetrics = self.collect_vms()
-                metrics = nodeMetrics + vmMetrics
+                metrics = self.collect_node() + self.collect_vms()
                 if metrics:
-                    if self.debugMode == "True":
-                        for i in metrics:
-                            logger.debug('Metric to send: %s', i)
                     for chunk in self._chunker(metrics, 100):
                         self.send(chunk)
                     logger.info("%d metrics sent", len(metrics))
-                time.sleep(1)
-                self.beat += 1
-                if self.beat % maxFrequency == 0:
-                    self.beat = 0
+                time.sleep(10)
         except KeyboardInterrupt:
             logger.info("Reporting has stopped by the user. Exiting...")
         finally:

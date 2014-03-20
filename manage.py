@@ -1,8 +1,6 @@
 import logging
 import sys
-from src import cnfparse
-from src import client
-from src.collectables import collectables
+from src.client import Client
 
 
 def main():
@@ -16,10 +14,8 @@ def main():
     if len(sys.argv) is not 2 and sys.argv[1] is not "run":
         print("[ERROR] Command cannot be parsed. Exiting...")
         return
-    configuration, metrics = cnfparse.import_conf("config/client.conf")
-    cli = client.Client(configuration)
-    metricCollectors = collectables.provide(metrics)
-    cli.run(metricCollectors)
+
+    Client().run()
 
 
 if __name__ == "__main__":
