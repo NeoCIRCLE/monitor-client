@@ -145,7 +145,7 @@ class Client:
 
         for entry in psutil.get_process_list():
             try:
-                if entry.name == 'kvm':
+                if entry.name in ('kvm', 'qemu-system-x86_64'):
                     parser = argparse.ArgumentParser()
                     parser.add_argument('-name')
                     parser.add_argument('--memory-size', '-m ', type=int)
