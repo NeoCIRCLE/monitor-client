@@ -109,7 +109,7 @@ class Client:
         now = time.time()
         vmem = psutil.virtual_memory()
         metrics = {
-            'cpu.usage': psutil.cpu_percent(),
+            'cpu.percent': psutil.cpu_percent(),
             'cpu.times': psutil.cpu_times().user + psutil.cpu_times().system,
             'memory.usage': vmem.percent,
             'memory.used_bytes': (vmem.total - vmem.available),
@@ -158,7 +158,11 @@ class Client:
                     args, unknown = parser.parse_known_args(
                         entry.cmdline()[1:])
 
-                    process = psutil.Process(entry.pid)
+                    process = self.processes.get(entry.pid, None)
+                    if not process or process.cmdline() != entry.cmdline():
+                        process = psutil.Process(entry.pid)
+                        logger.info('New process: %s', process)
+                        self.processes[entry.pid] = process
 
                     mem_perc = (process.get_memory_percent()
                                 / 100 * args.memory_size)
@@ -166,11 +170,10 @@ class Client:
                                    '%(time)d' % {'name': args.name,
                                                  'value': mem_perc,
                                                  'time': now})
-                    user_time, system_time = process.get_cpu_times()
-                    sum_time = system_time + user_time
-                    metrics.append('vm.%(name)s.cpu.usage %(value)f '
+                    cpu_perc = process.get_cpu_percent()
+                    metrics.append('vm.%(name)s.cpu.percent %(value)f '
                                    '%(time)d' % {'name': args.name,
-                                                 'value': sum_time,
+                                                 'value': cpu_perc,
                                                  'time': now})
                     running_vms.append(args.name)
             except psutil.NoSuchProcess:
@@ -216,6 +219,7 @@ class Client:
         modul to work properly.
         """
         self.connect()
+        self.processes = {}
         try:
             while True:
                 metrics = self.collect_node() + self.collect_vms()
