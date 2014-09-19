@@ -123,7 +123,11 @@ class Client:
 
         interfaces = psutil.network_io_counters(pernic=True)
         for interface, data in interfaces.iteritems():
-            if not interface.startswith('cloud-'):
+            if not (interface.startswith('cloud') or
+                    interface.endswith('-EXT') or
+                    interface.startswith('net') or
+                    interface.startswith('link') or
+                    interface in ('lo', 'firewall', 'virbr0', 'ovs-system')):
                 for metric in ('packets_sent', 'packets_recv',
                                'bytes_sent', 'bytes_recv'):
                     metrics['network.%s-%s' %
