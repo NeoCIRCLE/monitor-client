@@ -107,13 +107,15 @@ class Client:
         """
 
         now = time.time()
+        vmem = psutil.virtual_memory()
         metrics = {
-            'cpu.usage': psutil.cpu_percent(interval=0.0),
+            'cpu.usage': psutil.cpu_percent(),
             'cpu.times': psutil.cpu_times().user + psutil.cpu_times().system,
-            'memory.usage': psutil.virtual_memory().percent,
+            'memory.usage': vmem.percent,
+            'memory.used_bytes': (vmem.total - vmem.available),
             'swap.usage': psutil.swap_memory().percent,
-            'user.count': len(psutil.get_users()),
-            'system.boot_time': psutil.get_boot_time()
+            'user.count': len(psutil.users()),
+            'system.boot_time': psutil.boot_time()
         }
 
         for k, v in psutil.disk_io_counters().__dict__.items():
@@ -145,12 +147,12 @@ class Client:
 
         for entry in psutil.get_process_list():
             try:
-                if entry.name in ('kvm', 'qemu-system-x86_64'):
+                if entry.name() in ('kvm', 'qemu-system-x86_64'):
                     parser = argparse.ArgumentParser()
                     parser.add_argument('-name')
                     parser.add_argument('--memory-size', '-m ', type=int)
                     args, unknown = parser.parse_known_args(
-                        entry.cmdline[1:])
+                        entry.cmdline()[1:])
 
                     process = psutil.Process(entry.pid)
 
