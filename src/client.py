@@ -107,13 +107,15 @@ class Client:
         """
 
         now = time.time()
+        vmem = psutil.virtual_memory()
         metrics = {
-            'cpu.usage': psutil.cpu_percent(interval=0.0),
+            'cpu.percent': psutil.cpu_percent(),
             'cpu.times': psutil.cpu_times().user + psutil.cpu_times().system,
-            'memory.usage': psutil.virtual_memory().percent,
+            'memory.usage': vmem.percent,
+            'memory.used_bytes': (vmem.total - vmem.available),
             'swap.usage': psutil.swap_memory().percent,
-            'user.count': len(psutil.get_users()),
-            'system.boot_time': psutil.get_boot_time()
+            'user.count': len(psutil.users()),
+            'system.boot_time': psutil.boot_time()
         }
 
         for k, v in psutil.disk_io_counters().__dict__.items():
@@ -121,7 +123,11 @@ class Client:
 
         interfaces = psutil.network_io_counters(pernic=True)
         for interface, data in interfaces.iteritems():
-            if not interface.startswith('cloud-'):
+            if not (interface.startswith('cloud') or
+                    interface.endswith('-EXT') or
+                    interface.startswith('net') or
+                    interface.startswith('link') or
+                    interface in ('lo', 'firewall', 'virbr0', 'ovs-system')):
                 for metric in ('packets_sent', 'packets_recv',
                                'bytes_sent', 'bytes_recv'):
                     metrics['network.%s-%s' %
@@ -145,14 +151,18 @@ class Client:
 
         for entry in psutil.get_process_list():
             try:
-                if entry.name in ('kvm', 'qemu-system-x86_64'):
+                if entry.name() in ('kvm', 'qemu-system-x86_64'):
                     parser = argparse.ArgumentParser()
                     parser.add_argument('-name')
                     parser.add_argument('--memory-size', '-m ', type=int)
                     args, unknown = parser.parse_known_args(
-                        entry.cmdline[1:])
+                        entry.cmdline()[1:])
 
-                    process = psutil.Process(entry.pid)
+                    process = self.processes.get(entry.pid, None)
+                    if not process or process.cmdline() != entry.cmdline():
+                        process = psutil.Process(entry.pid)
+                        logger.info('New process: %s', process)
+                        self.processes[entry.pid] = process
 
                     mem_perc = (process.get_memory_percent()
                                 / 100 * args.memory_size)
@@ -160,11 +170,10 @@ class Client:
                                    '%(time)d' % {'name': args.name,
                                                  'value': mem_perc,
                                                  'time': now})
-                    user_time, system_time = process.get_cpu_times()
-                    sum_time = system_time + user_time
-                    metrics.append('vm.%(name)s.cpu.usage %(value)f '
+                    cpu_perc = process.get_cpu_percent()
+                    metrics.append('vm.%(name)s.cpu.percent %(value)f '
                                    '%(time)d' % {'name': args.name,
-                                                 'value': sum_time,
+                                                 'value': cpu_perc,
                                                  'time': now})
                     running_vms.append(args.name)
             except psutil.NoSuchProcess:
@@ -210,6 +219,7 @@ class Client:
         modul to work properly.
         """
         self.connect()
+        self.processes = {}
         try:
             while True:
                 metrics = self.collect_node() + self.collect_vms()
