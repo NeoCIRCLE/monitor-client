@@ -164,8 +164,8 @@ class Client:
                         logger.info('New process: %s', process)
                         self.processes[entry.pid] = process
 
-                    mem_perc = (process.get_memory_percent()
-                                / 100 * args.memory_size)
+                    mem_perc = (float(process.get_memory_info().rss)
+                                / (args.memory_size * 1024 ** 2) * 90)
                     metrics.append('vm.%(name)s.memory.usage %(value)f '
                                    '%(time)d' % {'name': args.name,
                                                  'value': mem_perc,
