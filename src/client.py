@@ -118,8 +118,11 @@ class Client:
             'system.boot_time': psutil.boot_time()
         }
 
-        for k, v in psutil.disk_io_counters().__dict__.items():
-            metrics['disk.%s' % k] = v
+        try:
+            for k, v in psutil.disk_io_counters().__dict__.items():
+                metrics['disk.%s' % k] = v
+        except:
+            pass
 
         interfaces = psutil.network_io_counters(pernic=True)
         for interface, data in interfaces.iteritems():

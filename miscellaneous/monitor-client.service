@@ -1,0 +1,13 @@
+[Unit]
+Description=CIRCLE monitor-client
+After=network.target
+
+[Service]
+User=cloud
+Group=cloud
+WorkingDirectory=/home/cloud/monitor-client
+ExecStart=/bin/bash -c "source /etc/profile; workon monitor-client; exec python manage.py run"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
