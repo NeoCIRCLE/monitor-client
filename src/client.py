@@ -8,6 +8,7 @@ import os
 import pika
 import psutil
 import time
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class Client:
         Constructor of the client class that is responsible for handling the
         communication between the graphite server and the data source. In
         order to initialize a client you must have the following
-        environmental varriables:
+        environmental variables:
         - GRAPHITE_SERVER_ADDRESS:
         - GRAPHITE_SERVER_PORT:
         - GRAPHITE_AMQP_USER:
@@ -37,7 +38,7 @@ class Client:
         - GRAPHITE_AMQP_VHOST:
         Missing only one of these variables will cause the client not to work.
         """
-        self.name = 'circle.%s' % gethostname()
+        self.name = 'circle.%s' % gethostname().split(".")[0]
         for var, env_var in self.env_config.items():
             value = os.getenv(env_var, "")
             if value:
@@ -160,6 +161,9 @@ class Client:
                     parser.add_argument('--memory-size', '-m ', type=int)
                     args, unknown = parser.parse_known_args(
                         entry.cmdline()[1:])
+                    # for Red Hat style parametering of kvm
+                    args.name = re.sub(r"^guest=", "", args.name)
+                    args.name = re.sub(r",debug-threads=.*$", "", args.name)
 
                     process = self.processes.get(entry.pid, None)
                     if not process or process.cmdline() != entry.cmdline():
